@@ -23,13 +23,18 @@ class ActionTile extends StatefulWidget {
 }
 
 class _ActionTileState extends State<ActionTile> {
-  bool _isExpanded = false;
+  double _swipeOffset = 0;
+  bool _isDragging = false;
+
+  static const double _actionExtent = 88;
+  static const double _maxSwipeExtent = 120;
+  static const Duration _snapDuration = Duration(milliseconds: 180);
 
   @override
   Widget build(BuildContext context) {
     // IF BLOCK Special Handling
     if (widget.action is IfAction) {
-        return _buildIfTile(context, widget.action as IfAction);
+        return _buildSwipeWrapper(_buildIfTile(context, widget.action as IfAction));
     }
 
     // Standard Tile
@@ -41,39 +46,28 @@ class _ActionTileState extends State<ActionTile> {
     if (widget.action is FetchAction) {
         final f = widget.action as FetchAction;
         icon = Icons.public;
-        iconColor = Colors.blue;
+        iconColor = AppColors.primary;
         title = "${f.method} ${f.url.isEmpty ? 'Untargeted' : f.url}";
         subtitle = "Target: ${f.targetVar}";
     } else if (widget.action is ToastAction) {
         icon = Icons.chat_bubble_outline;
-        iconColor = Colors.orange;
+        iconColor = AppColors.warning;
         subtitle = (widget.action as ToastAction).messageTemplate;
     } else if (widget.action is SetViewAction) {
         icon = Icons.view_quilt;
-        iconColor = Colors.purple;
+        iconColor = AppColors.success;
         subtitle = "Update UI: ${(widget.action as SetViewAction).textTemplate.replaceAll('\n', ' ')}";
+    } else if (widget.action is ReturnAction) {
+        icon = Icons.stop_circle_outlined;
+        iconColor = AppColors.danger;
+        title = "RETURN / STOP";
+        subtitle = "Ends execution immediately";
     }
 
-    return Dismissible(
-        key: ValueKey(widget.action.hashCode), // Should use stable ID if possible
-        direction: DismissDirection.endToStart,
-        onDismissed: (_) => widget.onDelete(),
-        background: Container(
-            color: Colors.red,
-            alignment: Alignment.centerRight,
-            padding: const EdgeInsets.only(right: 20),
-            child: const Icon(Icons.delete, color: Colors.white),
-        ),
-        child: Card(
-            margin: const EdgeInsets.only(bottom: 8),
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-                side: const BorderSide(color: AppColors.border),
-                borderRadius: BorderRadius.circular(12),
-            ),
+    return _buildSwipeWrapper(
+        Material(
             color: AppColors.cardBg,
             child: InkWell(
-                borderRadius: BorderRadius.circular(12),
                 onTap: widget.onTap,
                 child: Padding(
                     padding: const EdgeInsets.all(12),
@@ -108,20 +102,13 @@ class _ActionTileState extends State<ActionTile> {
   }
 
   Widget _buildIfTile(BuildContext context, IfAction ifAction) {
-      return Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-              side: const BorderSide(color: AppColors.border),
-              borderRadius: BorderRadius.circular(12),
-          ),
+      return Material(
           color: AppColors.cardBg,
           child: Column(
               children: [
                   // Header
                   InkWell(
-                      onTap: () => setState(() => _isExpanded = !_isExpanded),
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(12), bottom: Radius.circular(12)),
+                      onTap: () => widget.onEditIf?.call(0),
                       child: Padding(
                           padding: const EdgeInsets.all(12),
                           child: Row(
@@ -129,65 +116,157 @@ class _ActionTileState extends State<ActionTile> {
                                   Container(
                                       padding: const EdgeInsets.all(8),
                                       decoration: BoxDecoration(
-                                          color: Colors.amber.withOpacity(0.1),
+                                          color: AppColors.warning.withOpacity(0.1),
                                           borderRadius: BorderRadius.circular(8),
                                       ),
-                                      child: const Icon(Icons.call_split, color: Colors.amber, size: 20),
+                                      child: const Icon(Icons.call_split, color: AppColors.warning, size: 20),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
-                                      child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                              const Text("IF", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textHeader)),
-                                              Text(ifAction.conditionExpression.isEmpty ? "No condition" : ifAction.conditionExpression, 
-                                                  style: const TextStyle(fontSize: 12, fontFamily: "monospace", color: AppColors.primary)),
-                                          ],
+                                      child: Text.rich(
+                                          TextSpan(
+                                              children: [
+                                                  const TextSpan(
+                                                      text: "IF ",
+                                                      style: TextStyle(
+                                                          fontWeight: FontWeight.bold,
+                                                          fontSize: 13,
+                                                          color: AppColors.textHeader,
+                                                      ),
+                                                  ),
+                                                  TextSpan(
+                                                      text: ifAction.conditionExpression.isEmpty
+                                                          ? "Set condition"
+                                                          : ifAction.conditionExpression,
+                                                      style: TextStyle(
+                                                          fontSize: 12,
+                                                          fontFamily: "monospace",
+                                                          color: ifAction.conditionExpression.isEmpty
+                                                              ? AppColors.textMuted
+                                                              : AppColors.primary,
+                                                      ),
+                                                  ),
+                                              ],
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                       ),
                                   ),
-                                  Icon(_isExpanded ? Icons.expand_less : Icons.expand_more, color: Colors.grey, size: 18),
+                                  const Icon(Icons.edit, size: 14, color: Colors.grey),
                               ],
                           ),
                       ),
                   ),
-                  // Expanded Content
-                  if (_isExpanded)
-                      Container(
-                          decoration: const BoxDecoration(
-                              border: Border(top: BorderSide(color: AppColors.border)),
-                              color: Color(0xFFFAFAFA), // Slightly distinct background
-                          ),
-                          child: Column(
-                              children: [
-                                  _buildIfRow(
-                                      Icons.settings, 
-                                      "Condition", 
-                                      ifAction.conditionExpression.isEmpty ? "Not Set" : ifAction.conditionExpression,
-                                      Colors.grey,
-                                      () => widget.onEditIf?.call(0)
-                                  ),
-                                  const Divider(height: 1),
-                                  _buildIfRow(
-                                      Icons.check_circle_outline, 
-                                      "True Flow", 
-                                      "${ifAction.trueFlow.length} Actions",
-                                      Colors.green,
-                                      () => widget.onEditIf?.call(1)
-                                  ),
-                                  const Divider(height: 1),
-                                  _buildIfRow(
-                                      Icons.cancel_outlined, 
-                                      "False Flow", 
-                                      "${ifAction.falseFlow.length} Actions",
-                                      Colors.red,
-                                      () => widget.onEditIf?.call(2)
-                                  ),
-                              ],
-                          ),
-                      )
+                  const Divider(height: 1, thickness: 1, color: AppColors.scaffoldBg), // Separator matches item gaps
+                  Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                      child: Column(
+                          children: [
+                              _buildBranchPreview(
+                                  label: "True Branch",
+                                  icon: Icons.check_circle_outline,
+                                  color: AppColors.success,
+                                  flow: ifAction.trueFlow,
+                                  onTap: () => widget.onEditIf?.call(1),
+                              ),
+                              const SizedBox(height: 8),
+                              _buildBranchPreview(
+                                  label: "False Branch",
+                                  icon: Icons.cancel_outlined,
+                                  color: AppColors.danger,
+                                  flow: ifAction.falseFlow,
+                                  onTap: () => widget.onEditIf?.call(2),
+                              ),
+                          ],
+                      ),
+                  ),
               ],
           ),
       );
+  }
+
+  Widget _buildSwipeWrapper(Widget child) {
+      return Padding(
+          padding: const EdgeInsets.only(bottom: 1), // Generic separator
+          child: Stack( // Removed ClipRRect to remove radius
+                  children: [
+                      Positioned.fill(
+                          child: Container(
+                              color: AppColors.danger,
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.only(right: 16),
+                              child: _buildDeleteAction(),
+                          ),
+                      ),
+                      AnimatedContainer(
+                          duration: _isDragging ? Duration.zero : _snapDuration,
+                          curve: Curves.easeOutCubic,
+                          transform: Matrix4.translationValues(_swipeOffset, 0, 0),
+                          child: GestureDetector(
+                              behavior: HitTestBehavior.translucent,
+                              onHorizontalDragStart: _handleDragStart,
+                              onHorizontalDragUpdate: _handleDragUpdate,
+                              onHorizontalDragEnd: _handleDragEnd,
+                              onHorizontalDragCancel: _handleDragCancel,
+                              child: IgnorePointer(
+                                  ignoring: _swipeOffset.abs() > 1,
+                                  child: Container(
+                                      color: AppColors.cardBg, // Ensure opaque background for swipe
+                                      child: child
+                                  ),
+                              ),
+                          ),
+                      ),
+                  ],
+              ),
+      );
+  }
+
+  Widget _buildDeleteAction() {
+      return Material(
+          color: Colors.transparent,
+          child: InkWell(
+              onTap: widget.onDelete,
+              child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  decoration: BoxDecoration(
+                      color: AppColors.danger,
+                      borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Text(
+                      "Delete",
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                      ),
+                  ),
+              ),
+          ),
+      );
+  }
+
+  void _handleDragStart(DragStartDetails details) {
+      _isDragging = true;
+  }
+
+  void _handleDragUpdate(DragUpdateDetails details) {
+      final delta = details.primaryDelta ?? 0;
+      final next = (_swipeOffset + delta).clamp(-_maxSwipeExtent, 0.0);
+      setState(() => _swipeOffset = next);
+  }
+
+  void _handleDragEnd(DragEndDetails details) {
+      _isDragging = false;
+      final velocity = details.primaryVelocity ?? 0;
+      final shouldOpen = _swipeOffset <= -_actionExtent / 2 || velocity < -600;
+      setState(() => _swipeOffset = shouldOpen ? -_actionExtent : 0);
+  }
+
+  void _handleDragCancel() {
+      _isDragging = false;
+      final shouldOpen = _swipeOffset <= -_actionExtent / 2;
+      setState(() => _swipeOffset = shouldOpen ? -_actionExtent : 0);
   }
 
   Widget _buildIfRow(IconData icon, String title, String subtitle, Color color, VoidCallback onTap) {
@@ -203,13 +282,128 @@ class _ActionTileState extends State<ActionTile> {
                           width: 80, 
                           child: Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textHeader))
                       ),
-                      Expanded(
-                          child: Text(subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textBody), overflow: TextOverflow.ellipsis)
-                      ),
+                      if (subtitle.isNotEmpty)
+                          Expanded(
+                              child: Text(subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textBody), overflow: TextOverflow.ellipsis)
+                          )
+                      else
+                          const Spacer(),
                       const Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey),
                   ],
               ),
           ),
       );
+  }
+
+  Widget _buildBranchPreview({
+      required String label,
+      required IconData icon,
+      required Color color,
+      required List<Action> flow,
+      VoidCallback? onTap,
+  }) {
+      final count = flow.length;
+
+      return Material(
+          color: Colors.transparent,
+          child: InkWell(
+              onTap: onTap,
+              child: IntrinsicHeight(
+                  child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                          Container(width: 3, color: color),
+                          const SizedBox(width: 8),
+                          Expanded(
+                              child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 4),
+                                  child: Row(
+                                      children: [
+                                          Icon(icon, size: 16, color: color),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                              child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                      Row(
+                                                          children: [
+                                                              Expanded(
+                                                                  child: Text(
+                                                                      label,
+                                                                      style: const TextStyle(
+                                                                          fontSize: 12,
+                                                                          fontWeight: FontWeight.bold,
+                                                                          color: AppColors.textHeader,
+                                                                      ),
+                                                                  ),
+                                                              ),
+                                                              Text(
+                                                                  "$count step${count == 1 ? '' : 's'}",
+                                                                  style: const TextStyle(fontSize: 11, color: AppColors.textBody),
+                                                              ),
+                                                          ],
+                                                      ),
+                                                      const SizedBox(height: 4),
+                                                      ...flow.take(3).map((a) => Padding(
+                                                          padding: const EdgeInsets.only(top: 2),
+                                                          child: Text(
+                                                              "• ${_actionSummary(a)}", 
+                                                              style: const TextStyle(fontSize: 11, color: AppColors.textBody),
+                                                              maxLines: 1,
+                                                              overflow: TextOverflow.ellipsis,
+                                                          ),
+                                                      )).toList(),
+                                                      if (flow.length > 3)
+                                                          Padding(
+                                                              padding: const EdgeInsets.only(top: 2),
+                                                              child: Text(
+                                                                  "  + ${flow.length - 3} more...",
+                                                                  style: const TextStyle(fontSize: 10, color: AppColors.textMuted, fontStyle: FontStyle.italic),
+                                                              ),
+                                                          ),
+                                                      if (flow.isEmpty)
+                                                          const Text(
+                                                              "No actions yet",
+                                                              style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                                                          ),
+                                                  ],
+                                              ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          const Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey),
+                                      ],
+                                  ),
+                              ),
+                          ),
+                      ],
+                  ),
+              ),
+          ),
+      );
+  }
+
+  String _actionSummary(Action action) {
+      if (action is FetchAction) {
+          final url = action.url.isEmpty ? "fetch" : action.url;
+          return "${action.method} ${_truncate(url, 22)}";
+      }
+      if (action is ToastAction) {
+          return "Toast ${_truncate(action.messageTemplate, 22)}";
+      }
+      if (action is SetViewAction) {
+          final clean = action.textTemplate.replaceAll('\n', ' ');
+          return "View ${_truncate(clean, 22)}";
+      }
+      if (action is IfAction) {
+          return "IF ${_truncate(action.conditionExpression, 22)}";
+      }
+      return action.type;
+  }
+
+  String _truncate(String text, int max) {
+      if (text.isEmpty) return "Untitled";
+      final clean = text.replaceAll('\n', ' ').trim();
+      if (clean.length <= max) return clean;
+      return "${clean.substring(0, max - 3)}...";
   }
 }

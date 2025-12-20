@@ -34,4 +34,10 @@ sealed interface Action {
     ) : Action {
         override val type: String = "Toast"
     }
+
+    data class Return(
+        val stop: Boolean = true
+    ) : Action {
+        override val type: String = "Return"
+    }
 }

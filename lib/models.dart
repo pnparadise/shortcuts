@@ -53,6 +53,9 @@ abstract class Action {
       case 'Toast':
       case 'toast':
         return ToastAction.fromJson(json);
+      case 'Return':
+      case 'return':
+        return ReturnAction.fromJson(json);
       default:
         // Return dummy/empty or throw? 
         // Throwing breaks the whole list. Better to return a Toast with error?
@@ -196,5 +199,26 @@ class ToastAction extends Action {
   Map<String, dynamic> toJson() => {
         'type': type,
         'messageTemplate': messageTemplate,
+      };
+}
+
+class ReturnAction extends Action {
+  final bool stop;
+
+  ReturnAction({this.stop = true});
+
+  @override
+  String get type => 'Return';
+
+  factory ReturnAction.fromJson(Map<String, dynamic> json) {
+    return ReturnAction(
+        stop: json['stop'] ?? true, // Default to true if missing
+    );
+  }
+
+  @override
+  Map<String, dynamic> toJson() => {
+        'type': type,
+        'stop': stop,
       };
 }

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../models.dart';
 import '../../theme.dart';
 import '../variable_picker.dart';
+import 'editor_ui.dart';
 
 class FetchEditorSheet extends StatefulWidget {
   final FetchAction action;
@@ -87,85 +88,72 @@ class _FetchEditorSheetState extends State<FetchEditorSheet> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
-    return FractionallySizedBox(
-      heightFactor: 0.9,
-      child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-        child: Scaffold(
-          backgroundColor: AppColors.cardBg,
-          appBar: AppBar(
-            backgroundColor: AppColors.cardBg,
-            elevation: 0,
-            centerTitle: true,
-            leading: IconButton(
-                icon: const Icon(Icons.close, color: AppColors.textBody),
-                onPressed: () => Navigator.pop(context),
-            ),
-            title: const Text("Configure Request", style: TextStyle(color: AppColors.textHeader, fontSize: 16, fontWeight: FontWeight.bold)),
-            actions: [
-                TextButton(
-                    onPressed: _save,
-                    child: const Text("Done", style: TextStyle(fontWeight: FontWeight.bold)),
-                )
+    return EditorSheetScaffold(
+        title: "Configure Request",
+        onSave: _save,
+        heightFactor: 0.9,
+        bottom: TabBar(
+            controller: _tabController,
+            labelColor: AppColors.primary,
+            unselectedLabelColor: AppColors.textBody,
+            indicatorColor: AppColors.primary,
+            tabs: const [
+                Tab(text: "General"),
+                Tab(text: "Headers"),
+                Tab(text: "Body"),
+                Tab(text: "Test"),
             ],
-            bottom: TabBar(
-                controller: _tabController,
-                labelColor: AppColors.primary,
-                unselectedLabelColor: AppColors.textBody,
-                indicatorColor: AppColors.primary,
-                tabs: const [
-                    Tab(text: "General"),
-                    Tab(text: "Headers"),
-                    Tab(text: "Body"),
-                    Tab(text: "Test"),
-                ],
-            ),
-          ),
-          body: TabBarView(
-              controller: _tabController,
-              children: [
-                  _buildGeneralTab(),
-                  _buildHeadersTab(),
-                  _buildBodyTab(),
-                  _buildTestTab(),
-              ],
-          ),
         ),
-      ),
+        body: TabBarView(
+            controller: _tabController,
+            children: [
+                _buildGeneralTab(),
+                _buildHeadersTab(),
+                _buildBodyTab(),
+                _buildTestTab(),
+            ],
+        ),
     );
   }
 
   Widget _buildGeneralTab() {
       return ListView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
           children: [
-              _buildSectionLabel("Method"),
-              const SizedBox(height: 8),
-              Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                      border: Border.all(color: AppColors.border),
-                      borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                          value: _method,
-                          isExpanded: true,
-                          items: ["GET", "POST", "PUT", "DELETE", "PATCH"].map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
-                          onChanged: (v) => setState(() => _method = v!),
+              EditorSection(
+                  title: "Method",
+                  compact: true,
+                  child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                          color: AppColors.inputBg,
+                          border: Border.all(color: AppColors.border),
+                          borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                              value: _method,
+                              isExpanded: true,
+                              isDense: true,
+                              items: ["GET", "POST", "PUT", "DELETE", "PATCH"]
+                                  .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                                  .toList(),
+                              onChanged: (v) => setState(() => _method = v!),
+                          ),
                       ),
                   ),
               ),
-              const SizedBox(height: 24),
-              _buildSectionLabel("URL"),
-              const SizedBox(height: 8),
-              _buildTextFieldWithVar(_urlCtl, "https://api.example.com/v1/resource"),
-              const SizedBox(height: 24),
-              _buildSectionLabel("Target Variable"),
-               const SizedBox(height: 8),
-              _buildTextFieldWithVar(_targetCtl, "response"),
-              const SizedBox(height: 8),
-              const Text("Result will be stored in this variable (e.g. {{response.status}})", style: TextStyle(color: Colors.grey, fontSize: 12)),
+              EditorSection(
+                  title: "URL",
+                  compact: true,
+                  child: _buildTextFieldWithVar(_urlCtl, "https://api.example.com/v1/resource"),
+              ),
+              EditorSection(
+                  title: "Target Variable",
+                  hint: "Result will be stored here (e.g. {{response.status}}).",
+                  compact: true,
+                  child: _buildTextFieldWithVar(_targetCtl, "response"),
+              ),
           ],
       );
   }
@@ -174,35 +162,42 @@ class _FetchEditorSheetState extends State<FetchEditorSheet> with SingleTickerPr
       return Stack(
           children: [
               ListView(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                   children: [
-                      if (_headers.isEmpty) 
-                          const Center(
-                              child: Padding(
-                                  padding: EdgeInsets.only(top: 40),
-                                  child: Text("No headers", style: TextStyle(color: Colors.grey)),
-                              )
-                          ),
-                      ..._headers.entries.map((entry) => Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                              color: Colors.white,
-                              border: Border.all(color: AppColors.border),
-                              borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
+                      EditorSection(
+                          title: "Headers",
+                          hint: "Add key/value pairs for your request.",
+                          compact: true,
+                          child: Column(
                               children: [
-                                  Expanded(child: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.bold))),
-                                  Expanded(child: Text(entry.value, maxLines: 1, overflow: TextOverflow.ellipsis)),
-                                  IconButton(
-                                      icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-                                      onPressed: () => setState(() => _headers.remove(entry.key)),
-                                  )
+                                  if (_headers.isEmpty)
+                                      const Padding(
+                                          padding: EdgeInsets.only(top: 12),
+                                          child: Text("No headers yet", style: TextStyle(color: AppColors.textMuted)),
+                                      ),
+                                  ..._headers.entries.map((entry) => Container(
+                                      margin: const EdgeInsets.only(top: 8),
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                          color: AppColors.inputBg,
+                                          border: Border.all(color: AppColors.border),
+                                          borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Row(
+                                          children: [
+                                              Expanded(child: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.bold))),
+                                              Expanded(child: Text(entry.value, maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                              IconButton(
+                                                  icon: const Icon(Icons.delete, color: AppColors.danger, size: 20),
+                                                  onPressed: () => setState(() => _headers.remove(entry.key)),
+                                              )
+                                          ],
+                                      ),
+                                  )),
                               ],
                           ),
-                      )),
-                      const SizedBox(height: 80), // Space for FAB
+                      ),
+                      const SizedBox(height: 64), // Space for FAB
                   ],
               ),
               Positioned(
@@ -220,38 +215,44 @@ class _FetchEditorSheetState extends State<FetchEditorSheet> with SingleTickerPr
 
   Widget _buildBodyTab() {
       return Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
           child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                  const Text("Request Body (JSON)", style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Expanded(
-                      child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                              border: Border.all(color: AppColors.border),
-                              borderRadius: BorderRadius.circular(8),
-                              color: Colors.white,
-                          ),
-                          child: TextField(
-                              controller: _bodyCtl,
-                              maxLines: null,
-                              expands: true,
-                              style: const TextStyle(fontFamily: "monospace", fontSize: 12),
-                              decoration: const InputDecoration(border: InputBorder.none, hintText: "{\n  \"key\": \"value\"\n}"),
-                          ),
+                  EditorSection(
+                      title: "Request Body (JSON)",
+                      hint: "Optional. Supports variables.",
+                      compact: true,
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                              SizedBox(
+                                  height: 200,
+                                  child: TextField(
+                                      controller: _bodyCtl,
+                                      maxLines: null,
+                                      expands: true,
+                                      style: const TextStyle(fontFamily: "monospace", fontSize: 12),
+                                      decoration: editorInputDecoration(
+                                          hintText: "{\n  \"key\": \"value\"\n}",
+                                      ),
+                                  ),
+                              ),
+                              const SizedBox(height: 8),
+                              Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton.icon(
+                                      icon: const Icon(Icons.data_object, size: 16),
+                                      label: const Text("Insert Variable"),
+                                      onPressed: () => VariablePicker.show(
+                                          context,
+                                          onSelect: (v) => _insertAtCursor(_bodyCtl, v),
+                                      ),
+                                  ),
+                              ),
+                          ],
                       ),
                   ),
-                  const SizedBox(height: 8),
-                  Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton.icon(
-                          icon: const Icon(Icons.data_object, size: 16),
-                          label: const Text("Insert Variable"),
-                          onPressed: () => VariablePicker.show(context, onSelect: (v) => _insertAtCursor(_bodyCtl, v)),
-                      ),
-                  )
               ],
           ),
       );
@@ -259,7 +260,7 @@ class _FetchEditorSheetState extends State<FetchEditorSheet> with SingleTickerPr
 
   Widget _buildTestTab() {
       return Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
           child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -270,24 +271,24 @@ class _FetchEditorSheetState extends State<FetchEditorSheet> with SingleTickerPr
                       label: Text(_testing ? "Running..." : "Test Request"),
                       style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       onPressed: _testing ? null : _runTest,
                   ),
-                  const SizedBox(height: 24),
-                  const Text("Response:", style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 16),
+                  const Text("Response", style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   Expanded(
                       child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                              color: Colors.black87,
+                              color: AppColors.codeBg,
                               borderRadius: BorderRadius.circular(8),
                           ),
                           child: SingleChildScrollView(
                               child: SelectableText(
                                   _testResult.isEmpty ? "No run data" : _testResult,
-                                  style: const TextStyle(color: Colors.greenAccent, fontFamily: "monospace", fontSize: 12),
+                                  style: const TextStyle(color: AppColors.codeText, fontFamily: "monospace", fontSize: 12),
                               ),
                           ),
                       ),
@@ -318,21 +319,18 @@ class _FetchEditorSheetState extends State<FetchEditorSheet> with SingleTickerPr
       ));
   }
 
-  Widget _buildSectionLabel(String text) {
-      return Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textBody));
-  }
-
   Widget _buildTextFieldWithVar(TextEditingController ctl, String hint) {
       return TextField(
           controller: ctl,
-          decoration: InputDecoration(
+          decoration: editorInputDecoration(
               hintText: hint,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               suffixIcon: IconButton(
                   icon: const Icon(Icons.data_object, color: AppColors.primary),
-                  onPressed: () => VariablePicker.show(context, onSelect: (v) => _insertAtCursor(ctl, v)),
+                  onPressed: () => VariablePicker.show(
+                      context,
+                      onSelect: (v) => _insertAtCursor(ctl, v),
+                  ),
               ),
           ),
       );

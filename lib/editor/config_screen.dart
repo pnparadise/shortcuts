@@ -208,7 +208,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
                       }
                   ),
                   ListTile(
-                      leading: const Icon(Icons.check_circle_outline, color: Colors.green),
+                      leading: const Icon(Icons.check_circle_outline, color: AppColors.success),
                       title: const Text("Edit TRUE Actions"),
                       trailing: Text("${action.trueFlow.length} steps", style: const TextStyle(color: Colors.grey)),
                       onTap: () {
@@ -219,7 +219,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
                       },
                   ),
                   ListTile(
-                      leading: const Icon(Icons.cancel_outlined, color: Colors.red),
+                      leading: const Icon(Icons.cancel_outlined, color: AppColors.danger),
                       title: const Text("Edit FALSE Actions"),
                       trailing: Text("${action.falseFlow.length} steps", style: const TextStyle(color: Colors.grey)),
                       onTap: () {

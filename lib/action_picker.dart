@@ -47,6 +47,12 @@ class ActionPicker extends StatelessWidget {
                 description: "Update Widget",
                 onTap: () => Navigator.pop(context, SetViewAction()),
               ),
+              _ActionOption(
+                icon: Icons.stop_circle_outlined,
+                label: "Return",
+                description: "Stop Execution",
+                onTap: () => Navigator.pop(context, ReturnAction()),
+              ),
             ],
           ),
           const SizedBox(height: 24),

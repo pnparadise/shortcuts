@@ -17,21 +17,28 @@ class LogicEngine(private val androidContext: Context) {
     private val client = OkHttpClient()
 
 
-    suspend fun executeFlow(actions: List<Action>, contextManager: ContextManager) {
+    suspend fun executeFlow(actions: List<Action>, contextManager: ContextManager): Boolean {
         android.util.Log.d("LowCode", "LogicEngine: executeFlow with ${actions.size} actions. Actions: $actions")
         for ((index, action) in actions.withIndex()) {
             android.util.Log.d("LowCode", "LogicEngine: Processing action #$index type=${action::class.java.simpleName}")
             try {
-                when (action) {
-                    is Action.Fetch -> executeFetch(action, contextManager)
+                val shouldStop = when (action) {
+                    is Action.Fetch -> { executeFetch(action, contextManager); false }
                     is Action.If -> executeIf(action, contextManager)
-                    is Action.SetView -> executeSetView(action, contextManager)
-                    is Action.Toast -> executeToast(action, contextManager)
+                    is Action.SetView -> { executeSetView(action, contextManager); false }
+                    is Action.Toast -> { executeToast(action, contextManager); false }
+                    is Action.Return -> true
+                }
+                
+                if (shouldStop) {
+                    android.util.Log.d("LowCode", "LogicEngine: Flow stopped by Return action at index $index")
+                    return true
                 }
             } catch (e: Exception) {
                  android.util.Log.e("LowCode", "LogicEngine: Error executing action #$index", e)
             }
         }
+        return false
     }
 
     private fun executeFetch(action: Action.Fetch, cm: ContextManager) {
@@ -85,7 +92,7 @@ class LogicEngine(private val androidContext: Context) {
         }
     }
 
-    private suspend fun executeIf(action: Action.If, cm: ContextManager) {
+    private suspend fun executeIf(action: Action.If, cm: ContextManager): Boolean {
         val rawExpression = action.conditionExpression
         // Interpolate first to resolve variables
         val resolved = cm.interpolate(rawExpression)
@@ -100,7 +107,7 @@ class LogicEngine(private val androidContext: Context) {
 
         android.util.Log.d("LowCode", "LogicEngine: IF result=$isTrue")
 
-        if (isTrue) {
+        return if (isTrue) {
             executeFlow(action.trueFlow, cm)
         } else {
             executeFlow(action.falseFlow, cm)
