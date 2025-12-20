@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <!-- Trust system certificate authorities -->
+            <certificates src="system" />
+            <!-- Trust user-installed certificate authorities (for debugging/local dev) -->
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
