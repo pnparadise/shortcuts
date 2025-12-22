@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
-import 'theme.dart';
+import '../theme/theme.dart';
 
 class DashedRect extends StatelessWidget {
   final Color color;

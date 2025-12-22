@@ -1,21 +1,23 @@
 import 'dart:convert';
 import 'package:flutter/material.dart' hide Action;
 import 'package:flutter/services.dart';
-import '../models.dart';
-import '../theme.dart';
-import '../action_picker.dart';
-import 'action_tile.dart';
-import 'sheets/fetch_editor.dart';
-import 'sheets/common_sheets.dart';
+import '../../models.dart';
+import '../theme/theme.dart';
+import '../widgets/pickers/action_picker.dart';
+import '../widgets/action_tile.dart';
+import '../editors/request_editor.dart';
+import '../editors/condition_editor.dart';
+import '../editors/toast_editor.dart';
+import '../editors/view_editor.dart';
 
-class ConfigScreen extends StatefulWidget {
+class EditorScreen extends StatefulWidget {
   final int? widgetId;
   // For nested flows (IF block), we pass the initial actions and a callback
   final List<Action>? initialActions; 
   final ValueChanged<List<Action>>? onFlowChanged;
   final String title;
 
-  const ConfigScreen({
+  const EditorScreen({
       super.key, 
       this.widgetId, 
       this.initialActions,
@@ -24,10 +26,10 @@ class ConfigScreen extends StatefulWidget {
   });
 
   @override
-  State<ConfigScreen> createState() => _ConfigScreenState();
+  State<EditorScreen> createState() => _EditorScreenState();
 }
 
-class _ConfigScreenState extends State<ConfigScreen> {
+class _EditorScreenState extends State<EditorScreen> {
   static const platform = MethodChannel('com.example.lowcode/widget');
   
   List<Action> _actions = [];
@@ -181,9 +183,9 @@ class _ConfigScreenState extends State<ConfigScreen> {
               )
           );
       } else if (action is ToastAction) {
-          CommonSheets.showToastEditor(context, action, onSave);
+          ToastEditor.show(context, action, onSave);
       } else if (action is SetViewAction) {
-          CommonSheets.showSetViewEditor(context, action, onSave);
+          ViewEditor.show(context, action, onSave);
       } else if (action is IfAction) {
           _showIfOptions(action, onSave);
       }
@@ -201,7 +203,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
                       title: const Text("Edit Condition"),
                       onTap: () {
                           Navigator.pop(ctx);
-                          CommonSheets.showIfEditor(context, action, onSave);
+                          ConditionEditor.show(context, action, onSave);
                       }
                   ),
                   ListTile(
@@ -233,7 +235,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
   }
   
   void _navToNestedFlow(String title, List<Action> flow, ValueChanged<List<Action>> onChanged) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => ConfigScreen(
+      Navigator.push(context, MaterialPageRoute(builder: (_) => EditorScreen(
           title: title,
           initialActions: flow,
           onFlowChanged: onChanged,
@@ -333,7 +335,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
   void _handleIfEdit(int index, IfAction action, int part) {
       if (part == 0) {
           // Edit Condition
-          CommonSheets.showIfEditor(context, action, (newAction) => _updateAction(index, newAction));
+          ConditionEditor.show(context, action, (newAction) => _updateAction(index, newAction));
       } else if (part == 1) {
           // Edit True Flow
           _navToNestedFlow("True Block", action.trueFlow, (newFlow) {

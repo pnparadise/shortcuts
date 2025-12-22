@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart' hide Action;
-import 'models.dart';
-import 'theme.dart';
+import '../../../models.dart';
+import '../../theme/theme.dart';
 
 class ActionPicker extends StatelessWidget {
   const ActionPicker({super.key});

@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart' hide Action;
 import 'package:flutter/services.dart';
 import '../../models.dart';
-import '../../theme.dart';
-import '../variable_picker.dart';
-import 'editor_ui.dart';
+import '../theme/theme.dart';
+import '../widgets/pickers/variable_picker.dart';
+import '../widgets/editor/editor_scaffold.dart';
+import '../widgets/editor/editor_section.dart';
+import '../widgets/editor/input_decoration.dart';
 
 class FetchEditorSheet extends StatefulWidget {
   final FetchAction action;

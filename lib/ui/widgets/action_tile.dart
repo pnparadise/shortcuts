@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart' hide Action;
-import 'sheets/common_sheets.dart';
-import '../models.dart';
-import '../theme.dart';
+import '../../models.dart';
+import '../theme/theme.dart';
+import '../editors/condition_editor.dart';
 
 class ActionTile extends StatefulWidget {
   final Action action;
@@ -169,7 +169,7 @@ class _ActionTileState extends State<ActionTile> {
                       InkWell(
                         onTap: () {
                              // Direct Edit Condition
-                             CommonSheets.showIfEditor(context, ifAction, (updatedAction) {
+                             ConditionEditor.show(context, ifAction, (updatedAction) {
                                   widget.onChanged?.call(updatedAction);
                              });
                         },
