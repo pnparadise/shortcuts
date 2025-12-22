@@ -71,8 +71,6 @@ class _ConfigScreenState extends State<ConfigScreen> {
               _actions = Action.fromJsonList(logicJson);
           } catch (e) {
               debugPrint("JSON Parse Error: $e");
-              // Consider showing a SnackBar or Toast to user?
-              // ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to load logic: $e")));
           }
         });
       }
@@ -128,9 +126,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
                           onTap: () {
                               setState(() => _iconId = key);
                               Navigator.pop(context);
-                              _editMetadata(); // Reopen to show selection or just close? 
-                              // Better: State variable inside dialog or just close. 
-                              // Let's just update and close for simplicity, user can reopen.
+                              _editMetadata(); 
                           },
                           child: Container(
                               padding: const EdgeInsets.all(8),
@@ -170,6 +166,10 @@ class _ConfigScreenState extends State<ConfigScreen> {
   }
 
   void _openActionEditor(int index, Action action) {
+      _openEditorWithCallback(action, (newAction) => _updateAction(index, newAction));
+  }
+
+  void _openEditorWithCallback(Action action, ValueChanged<Action> onSave) {
       if (action is FetchAction) {
           showModalBottomSheet(
               context: context,
@@ -177,22 +177,19 @@ class _ConfigScreenState extends State<ConfigScreen> {
               backgroundColor: Colors.transparent, 
               builder: (_) => FetchEditorSheet(
                   action: action, 
-                  onSave: (newAction) => _updateAction(index, newAction)
+                  onSave: onSave
               )
           );
       } else if (action is ToastAction) {
-          CommonSheets.showToastEditor(context, action, (newAction) => _updateAction(index, newAction));
+          CommonSheets.showToastEditor(context, action, onSave);
       } else if (action is SetViewAction) {
-          CommonSheets.showSetViewEditor(context, action, (newAction) => _updateAction(index, newAction));
+          CommonSheets.showSetViewEditor(context, action, onSave);
       } else if (action is IfAction) {
-          // Special Case: IF Block Logic is nested.
-          // 1. Edit Condition
-          // 2. Edit Flows (True/False)
-          _showIfOptions(index, action);
+          _showIfOptions(action, onSave);
       }
   }
   
-  void _showIfOptions(int index, IfAction action) {
+  void _showIfOptions(IfAction action, ValueChanged<Action> onSave) {
       showModalBottomSheet(
           context: context,
           backgroundColor: AppColors.cardBg,
@@ -204,7 +201,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
                       title: const Text("Edit Condition"),
                       onTap: () {
                           Navigator.pop(ctx);
-                          CommonSheets.showIfEditor(context, action, (newAction) => _updateAction(index, newAction));
+                          CommonSheets.showIfEditor(context, action, onSave);
                       }
                   ),
                   ListTile(
@@ -214,7 +211,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
                       onTap: () {
                           Navigator.pop(ctx);
                           _navToNestedFlow("True Block", action.trueFlow, (newFlow) {
-                              _updateAction(index, action.copyWith(trueFlow: newFlow));
+                              onSave(action.copyWith(trueFlow: newFlow));
                           });
                       },
                   ),
@@ -225,7 +222,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
                       onTap: () {
                           Navigator.pop(ctx);
                           _navToNestedFlow("False Block", action.falseFlow, (newFlow) {
-                              _updateAction(index, action.copyWith(falseFlow: newFlow));
+                              onSave(action.copyWith(falseFlow: newFlow));
                           });
                       },
                   ),
@@ -301,12 +298,15 @@ class _ConfigScreenState extends State<ConfigScreen> {
                       // We wrap in a Container to give it a Key for reordering
                       return Container(
                           key: ValueKey("${action.type}_$index"), // Key must be unique-ish
+                          margin: const EdgeInsets.only(bottom: 8), // Add vertical spacing
                           child: ActionTile(
                               index: index,
                               action: action,
                               onTap: () => _openActionEditor(index, action),
                               onDelete: () => _deleteAction(index),
-                              onEditIf: (part) => _handleIfEdit(index, action as IfAction, part),
+                              onChanged: (newAction) => _updateAction(index, newAction),
+                              onNavToFlow: _navToNestedFlow,
+                              onEditNested: (subAction, onUpdate) => _openEditorWithCallback(subAction, onUpdate),
                           ),
                       );
                   },
