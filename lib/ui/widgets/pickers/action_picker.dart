@@ -10,18 +10,18 @@ class ActionPicker extends StatelessWidget {
     return Container(
       color: AppColors.scaffoldBg,
       padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: ListView(
+        shrinkWrap: true,
         children: [
           const Text("Add Action", style: AppStyles.headerStyle),
           const SizedBox(height: 16),
           GridView.count(
             shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
             crossAxisCount: 2,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
-            childAspectRatio: 2.5, // rectangular "server-addon" look
+            childAspectRatio: 2.0, // Taller items
             children: [
               _ActionOption(
                 icon: Icons.public,
@@ -65,7 +65,18 @@ class ActionPicker extends StatelessWidget {
                 description: "Stop Execution",
                 onTap: () => Navigator.pop(context, ReturnAction()),
               ),
-
+              _ActionOption(
+                icon: Icons.notifications_outlined,
+                label: "Notification",
+                description: "Push Message",
+                onTap: () => Navigator.pop(context, NotificationAction()),
+              ),
+              _ActionOption(
+                icon: Icons.terminal,
+                label: "Expression",
+                description: "DSL Script",
+                onTap: () => Navigator.pop(context, ExpressionAction()),
+              ),
             ],
           ),
           const SizedBox(height: 24),

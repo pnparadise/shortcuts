@@ -62,6 +62,12 @@ abstract class Action {
       case 'Return':
       case 'return':
         return ReturnAction.fromJson(json);
+      case 'Notification':
+      case 'notification':
+        return NotificationAction.fromJson(json);
+      case 'Expression':
+      case 'expression':
+        return ExpressionAction.fromJson(json);
       default:
         // Return dummy/empty or throw? 
         // Throwing breaks the whole list. Better to return a Toast with error?
@@ -276,12 +282,14 @@ class IntentAction extends Action {
   final String action;
   final String packageName;
   final String? className;
+  final String dataUri; // Data URI for intent.setData()
   final Map<String, String> extras;
 
   IntentAction({
     this.action = 'android.intent.action.VIEW',
     this.packageName = '',
     this.className,
+    this.dataUri = '',
     this.extras = const {},
   });
 
@@ -293,6 +301,7 @@ class IntentAction extends Action {
       action: json['action'] ?? 'android.intent.action.VIEW',
       packageName: json['packageName'] ?? '',
       className: json['className'],
+      dataUri: json['dataUri'] ?? '',
       extras: (json['extras'] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v.toString())) ?? const {},
     );
   }
@@ -301,12 +310,14 @@ class IntentAction extends Action {
     String? action,
     String? packageName,
     String? className,
+    String? dataUri,
     Map<String, String>? extras,
   }) {
     return IntentAction(
       action: action ?? this.action,
       packageName: packageName ?? this.packageName,
       className: className ?? this.className,
+      dataUri: dataUri ?? this.dataUri,
       extras: extras ?? this.extras,
     );
   }
@@ -317,8 +328,73 @@ class IntentAction extends Action {
         'action': action,
         'packageName': packageName,
         'className': className,
+        'dataUri': dataUri,
         'extras': extras,
       };
 }
 
+class NotificationAction extends Action {
+  final String title;
+  final String message;
+  final String channelId;
 
+  NotificationAction({
+    this.title = '',
+    this.message = '',
+    this.channelId = 'shortcuts',
+  });
+
+  @override
+  String get type => 'Notification';
+
+  factory NotificationAction.fromJson(Map<String, dynamic> json) {
+    return NotificationAction(
+      title: json['title'] ?? '',
+      message: json['message'] ?? '',
+      channelId: json['channelId'] ?? 'shortcuts',
+    );
+  }
+
+  NotificationAction copyWith({
+    String? title,
+    String? message,
+    String? channelId,
+  }) {
+    return NotificationAction(
+      title: title ?? this.title,
+      message: message ?? this.message,
+      channelId: channelId ?? this.channelId,
+    );
+  }
+
+  @override
+  Map<String, dynamic> toJson() => {
+        'type': type,
+        'title': title,
+        'message': message,
+        'channelId': channelId,
+      };
+}
+
+class ExpressionAction extends Action {
+  final String script;
+
+  ExpressionAction({this.script = ''});
+
+  @override
+  String get type => 'Expression';
+
+  factory ExpressionAction.fromJson(Map<String, dynamic> json) {
+    return ExpressionAction(script: json['script'] ?? '');
+  }
+
+  ExpressionAction copyWith({String? script}) {
+    return ExpressionAction(script: script ?? this.script);
+  }
+
+  @override
+  Map<String, dynamic> toJson() => {
+        'type': type,
+        'script': script,
+      };
+}

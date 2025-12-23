@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart' hide Action;
 import '../../models.dart';
 import '../theme/theme.dart';
-import '../widgets/pickers/variable_picker.dart';
+import '../widgets/editor/editor_input.dart';
 import '../widgets/editor/editor_scaffold.dart';
 import '../widgets/editor/editor_section.dart';
 
-import '../widgets/editor/editor_input.dart';
+
 
 class ClipboardEditorSheet extends StatefulWidget {
   final ClipboardAction action;
@@ -77,11 +77,12 @@ class _ClipboardEditorSheetState extends State<ClipboardEditorSheet> {
           if (_mode == 'READ')
             EditorSection(
               title: "Target Variable",
-              hint: "Store clipboard content into: {{var}}",
-              child: EditorTextField(
-                controller: _targetCtl,
-                hintText: "e.g. clip_data",
-              ),
+              hint: "Store clipboard content into: \$var",
+                child: EditorTextField(
+                  controller: _targetCtl,
+                  hintText: "e.g. clip_data",
+                  enableDslInput: true,
+                ),
             ),
           if (_mode == 'WRITE')
             EditorSection(
@@ -90,7 +91,8 @@ class _ClipboardEditorSheetState extends State<ClipboardEditorSheet> {
               child: EditorTextField(
                   controller: _textCtl,
                   maxLines: 3,
-                  hintText: "Enter text or {{var}}",
+                  hintText: "Enter text or \$var",
+                  enableDslInput: true,
               ),
             ),
         ],
@@ -98,3 +100,4 @@ class _ClipboardEditorSheetState extends State<ClipboardEditorSheet> {
     );
   }
 }
+

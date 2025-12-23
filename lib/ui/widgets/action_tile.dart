@@ -10,9 +10,11 @@ class ActionTile extends StatefulWidget {
   final Function(Action subAction, ValueChanged<Action> onUpdate)? onEditNested;
   final Function(String title, List<Action> flow, ValueChanged<List<Action>> onUpdate)? onNavToFlow;
   final ValueChanged<Action>? onChanged;
+  final VoidCallback? onToggleCollapse;
   final int index;
   final bool isReorderable;
   final bool headerOnly;
+  final bool isCollapsed;
 
   const ActionTile({
     super.key,
@@ -22,9 +24,11 @@ class ActionTile extends StatefulWidget {
     this.onEditNested,
     this.onNavToFlow,
     this.onChanged,
+    this.onToggleCollapse,
     required this.index,
     this.isReorderable = false,
     this.headerOnly = false,
+    this.isCollapsed = false,
   });
 
   @override
@@ -84,6 +88,18 @@ class _ActionTileState extends State<ActionTile> {
       iconColor = AppColors.danger;
       title = "RETURN / STOP";
       subtitle = "Ends execution immediately";
+    } else if (widget.action is NotificationAction) {
+      final n = widget.action as NotificationAction;
+      icon = Icons.notifications_outlined;
+      iconColor = Colors.blue;
+      title = n.title.isEmpty ? "Notification" : n.title;
+      subtitle = n.message.isEmpty ? "Push notification" : n.message;
+    } else if (widget.action is ExpressionAction) {
+      final e = widget.action as ExpressionAction;
+      icon = Icons.terminal;
+      iconColor = Colors.teal;
+      title = "Expression";
+      subtitle = e.script.isEmpty ? "DSL Script" : e.script.split('\n').first;
     }
 
     return _buildSwipeWrapper(
@@ -148,7 +164,7 @@ class _ActionTileState extends State<ActionTile> {
             child: Material(
               color: AppColors.cardBg,
               child: InkWell(
-                onTap: () => setState(() => _isExpanded = !_isExpanded),
+                onTap: widget.onToggleCollapse ?? () => setState(() => _isExpanded = !_isExpanded),
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Row(

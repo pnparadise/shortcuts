@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../theme/theme.dart';
 import 'editor_input.dart';
+import 'dsl_input.dart';
 
 class KeyValueEditor extends StatefulWidget {
   final Map<String, String> items;
@@ -9,6 +10,8 @@ class KeyValueEditor extends StatefulWidget {
   final String valueLabel;
   final List<String> keySuggestions;
   final List<String> Function(String key)? valueSuggestions;
+  final bool enableDslValue;
+  final List<String> contextVariables;
 
   const KeyValueEditor({
     super.key,
@@ -18,6 +21,8 @@ class KeyValueEditor extends StatefulWidget {
     this.valueLabel = "Value",
     this.keySuggestions = const [],
     this.valueSuggestions,
+    this.enableDslValue = false,
+    this.contextVariables = const ['res', 'res.data', 'res.status', 'clip', 'url'],
   });
 
   @override
@@ -72,6 +77,28 @@ class _KeyValueEditorState extends State<KeyValueEditor> {
     _update();
   }
 
+  Widget _buildValueField(int index) {
+    final controller = TextEditingController(text: _rows[index].value)
+      ..selection = TextSelection.collapsed(offset: _rows[index].value.length);
+
+    if (widget.enableDslValue) {
+      return DslInput(
+        controller: controller,
+        hintText: widget.valueLabel,
+        contextVariables: widget.contextVariables,
+        showSymbolBar: false,
+        onChanged: (v) => _onRowChanged(index, _rows[index].key, v),
+      );
+    }
+
+    return EditorTextField(
+      controller: controller,
+      hintText: widget.valueLabel,
+      autofillHints: widget.valueSuggestions?.call(_rows[index].key) ?? const [],
+      onChanged: (v) => _onRowChanged(index, _rows[index].key, v),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -89,20 +116,13 @@ class _KeyValueEditorState extends State<KeyValueEditor> {
                       ..selection = TextSelection.collapsed(offset: _rows[i].key.length),
                     hintText: widget.keyLabel,
                     autofillHints: widget.keySuggestions,
-                    enableVariablePicker: false, // Keys usually don't need vars
                     onChanged: (v) => _onRowChanged(i, v, _rows[i].value),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   flex: 1,
-                  child: EditorTextField(
-                    controller: TextEditingController(text: _rows[i].value)
-                      ..selection = TextSelection.collapsed(offset: _rows[i].value.length),
-                    hintText: widget.valueLabel,
-                    autofillHints: widget.valueSuggestions?.call(_rows[i].key) ?? const [],
-                    onChanged: (v) => _onRowChanged(i, _rows[i].key, v),
-                  ),
+                  child: _buildValueField(i),
                 ),
                 // Only show delete button for non-last rows or if it's the only row but has content
                 if (i < _rows.length - 1)

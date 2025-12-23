@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../models.dart';
 import '../theme/theme.dart';
-import '../widgets/pickers/variable_picker.dart';
+import '../widgets/editor/editor_input.dart';
 import '../widgets/editor/editor_scaffold.dart';
 import '../widgets/editor/editor_section.dart';
 
-import '../widgets/editor/editor_input.dart';
+
 
 class ViewEditor extends StatefulWidget {
   final SetViewAction action;
@@ -68,11 +68,12 @@ class _ViewEditorState extends State<ViewEditor> {
               children: [
                   EditorSection(
                       title: "View Content",
-                      hint: "Markdown or plain text. Use variables like {{res.status}}.",
+                      hint: "Markdown or plain text. Use variables like \$res.status.",
                       child: EditorTextField(
                           controller: _ctl,
-                          maxLines: 15, // TextArea
-                          hintText: "# Dashboard\nStatus: {{res.status}}",
+                          maxLines: 15,
+                          hintText: "# Dashboard\nStatus: \$res.status",
+                          enableDslInput: true,
                       ),
                   ),
               ],
@@ -80,3 +81,4 @@ class _ViewEditorState extends State<ViewEditor> {
       );
   }
 }
+

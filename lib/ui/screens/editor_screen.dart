@@ -11,6 +11,8 @@ import '../editors/toast_editor.dart';
 import '../editors/view_editor.dart';
 import '../editors/clipboard_editor.dart';
 import '../editors/intent_editor.dart';
+import '../editors/notification_editor.dart';
+import '../editors/expression_editor.dart';
 
 import 'flat_editor_utils.dart';
 
@@ -37,6 +39,7 @@ class _EditorScreenState extends State<EditorScreen> {
   
   List<FlatItem> _flatActions = []; // Flattened list
   bool _loading = false;
+  Set<String> _collapsedBlocks = {}; // Track collapsed IF blocks by their ID
   
   // Widget Meta
   late int _localWidgetId;
@@ -202,6 +205,10 @@ class _EditorScreenState extends State<EditorScreen> {
           ClipboardEditorSheet.show(context, action, onSave);
       } else if (action is IntentAction) {
           IntentEditorSheet.show(context, action, onSave);
+      } else if (action is NotificationAction) {
+          NotificationEditor.show(context, action, onSave);
+      } else if (action is ExpressionAction) {
+          ExpressionEditor.show(context, action, onSave);
       } else if (action is IfAction) {
           // Only edit condition
           ConditionEditor.show(context, action, onSave);
@@ -213,17 +220,45 @@ class _EditorScreenState extends State<EditorScreen> {
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       appBar: AppBar(
+        leadingWidth: Navigator.canPop(context) ? 48 : 16, // Consistent left margin
         leading: Navigator.canPop(context) ? IconButton(
             icon: const Icon(Icons.arrow_back, color: AppColors.textHeader),
             onPressed: () => Navigator.pop(context),
-        ) : null,
+        ) : const SizedBox(width: 16), // Spacer when no back button
+        titleSpacing: 0, // Control spacing manually
         title: InkWell(
             onTap: _isRoot ? _editMetadata : null,
-            child: Row(mainAxisSize: MainAxisSize.min, children: [if (_isRoot) ...[Icon(IconMap.getIcon(_iconId), size: 20, color: AppColors.textHeader), const SizedBox(width: 8)], Text(_isRoot ? _label : widget.title, style: AppStyles.headerStyle), if (_isRoot) const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.edit, size: 14, color: Colors.grey))]),
+            child: Row(
+                mainAxisSize: MainAxisSize.min, 
+                children: [
+                    if (_isRoot) ...[
+                        Icon(IconMap.getIcon(_iconId), size: 20, color: AppColors.textHeader), 
+                        const SizedBox(width: 10)
+                    ], 
+                    Flexible(
+                        child: Text(
+                            _isRoot ? _label : widget.title, 
+                            style: AppStyles.headerStyle,
+                            overflow: TextOverflow.ellipsis,
+                        ),
+                    ),
+                    if (_isRoot) const Padding(
+                        padding: EdgeInsets.only(left: 8), 
+                        child: Icon(Icons.edit, size: 14, color: Colors.grey)
+                    ),
+                ],
+            ),
         ),
         backgroundColor: AppColors.cardBg,
-        elevation: 1,
-        actions: [if (_isRoot) TextButton(onPressed: _saveWidget, child: const Text("SAVE", style: TextStyle(fontWeight: FontWeight.bold)))],
+        elevation: 0,
+        actions: [
+            if (_isRoot) IconButton(
+                icon: const Icon(Icons.save, color: Colors.grey),
+                onPressed: _saveWidget,
+                tooltip: "Save",
+            ),
+            const SizedBox(width: 8), // Right margin
+        ],
       ),
       body: _loading 
           ? const Center(child: CircularProgressIndicator()) 
@@ -273,7 +308,17 @@ class _EditorScreenState extends State<EditorScreen> {
                   },
                   itemBuilder: (context, index) {
                       final flatItem = _flatActions[index];
-                      // Use wrapper for depth lines
+                      
+                      // Check if this item should be hidden due to collapsed parent
+                      if (flatItem.type != FlatItemType.ifStart) {
+                          // Find the parent IF block
+                          final parentIfId = _findParentIfId(flatItem);
+                          if (parentIfId != null && _collapsedBlocks.contains(parentIfId)) {
+                              // Parent is collapsed - hide this item
+                              return SizedBox.shrink(key: ValueKey(flatItem.id));
+                          }
+                      }
+                      
                       // Tighten IF bottom margin
                       double? customMargin;
                       if (flatItem.type == FlatItemType.ifStart) customMargin = 4.0;
@@ -304,7 +349,12 @@ class _EditorScreenState extends State<EditorScreen> {
           backgroundColor: AppColors.primary,
           child: const Icon(Icons.add),
           onPressed: () async {
-              final newAction = await showModalBottomSheet<Action>(context: context, backgroundColor: Colors.transparent, builder: (_) => const ActionPicker());
+              final newAction = await showModalBottomSheet<Action>(
+                  context: context, 
+                  backgroundColor: Colors.transparent, 
+                  isScrollControlled: true,
+                  builder: (_) => const ActionPicker()
+              );
               if (newAction != null) {
                   setState(() {
                       _flatActions.addAll(FlowFlattener.flatten([newAction]));
@@ -318,11 +368,23 @@ class _EditorScreenState extends State<EditorScreen> {
   Widget _buildItemContent(int index, FlatItem flatItem) {
       if (flatItem.type == FlatItemType.action || flatItem.type == FlatItemType.ifStart) {
            final isIf = flatItem.type == FlatItemType.ifStart;
+           final isCollapsed = isIf && _collapsedBlocks.contains(flatItem.id);
+           
            return ActionTile(
                index: index,
                action: flatItem.action!,
                isReorderable: true,
                headerOnly: isIf, 
+               isCollapsed: isCollapsed,
+               onToggleCollapse: isIf ? () {
+                   setState(() {
+                       if (_collapsedBlocks.contains(flatItem.id)) {
+                           _collapsedBlocks.remove(flatItem.id);
+                       } else {
+                           _collapsedBlocks.add(flatItem.id);
+                       }
+                   });
+               } : null,
                onTap: () => _openEditorWithCallback(flatItem.action!, (newAction) {
                    setState(() {
                         // Update
@@ -332,6 +394,15 @@ class _EditorScreenState extends State<EditorScreen> {
                         );
                    });
                }),
+               onChanged: (newAction) {
+                   setState(() {
+                        // Update when edited via inline edit button (e.g., IF condition edit icon)
+                        final old = _flatActions[index];
+                        _flatActions[index] = FlatItem(
+                            id: old.id, type: old.type, action: newAction, depth: old.depth, parentId: old.parentId, ancestorLines: old.ancestorLines
+                        );
+                   });
+               },
                onDelete: () => _deleteFlatItem(index),
            );
       } else {
@@ -383,6 +454,22 @@ class _EditorScreenState extends State<EditorScreen> {
            );
       }
       return const SizedBox();
+  }
+
+  String? _findParentIfId(FlatItem item) {
+      // For items that have a parentId, find the IF_START parent
+      if (item.parentId != null) {
+          return "IF_START_${item.parentId}";
+      }
+      // For nested actions inside THEN/ELSE, trace back through the list
+      final idx = _flatActions.indexOf(item);
+      for (int i = idx - 1; i >= 0; i--) {
+          final prev = _flatActions[i];
+          if (prev.type == FlatItemType.ifStart && prev.depth < item.depth) {
+              return prev.id;
+          }
+      }
+      return null;
   }
 
   int _countStepsInBlock(FlatItem marker) {

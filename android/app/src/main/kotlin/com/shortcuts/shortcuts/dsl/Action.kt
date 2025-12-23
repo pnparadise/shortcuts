@@ -53,8 +53,24 @@ sealed interface Action {
         val action: String = "android.intent.action.VIEW",
         val packageName: String = "",
         val className: String? = null,
+        val dataUri: String = "",
         val extras: Map<String, String> = emptyMap()
     ) : Action {
         override val type: String = "Intent"
     }
+
+    data class Notification(
+        val title: String = "",
+        val message: String = "",
+        val channelId: String = "shortcuts"
+    ) : Action {
+        override val type: String = "Notification"
+    }
+
+    data class Expression(
+        val script: String = ""
+    ) : Action {
+        override val type: String = "Expression"
+    }
 }
+

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../models.dart';
 import '../theme/theme.dart';
-import '../widgets/pickers/variable_picker.dart';
+import '../widgets/editor/editor_input.dart';
 import '../widgets/editor/editor_scaffold.dart';
 import '../widgets/editor/editor_section.dart';
 
-import '../widgets/editor/editor_input.dart';
+
 
 class ToastEditor extends StatefulWidget {
   final ToastAction action;
@@ -68,11 +68,12 @@ class _ToastEditorState extends State<ToastEditor> {
               children: [
                   EditorSection(
                       title: "Message Template",
-                      hint: "Supports variables like {{res.data.message}}.",
+                      hint: "Supports variables like \$res.data.message.",
                       child: EditorTextField(
                           controller: _ctl,
                           maxLines: 4,
                           hintText: "Operation successful!",
+                          enableDslInput: true,
                       ),
                   ),
               ],
@@ -80,3 +81,4 @@ class _ToastEditorState extends State<ToastEditor> {
       );
   }
 }
+

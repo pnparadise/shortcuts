@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../models.dart';
 import '../theme/theme.dart';
-import '../widgets/pickers/variable_picker.dart';
+import '../widgets/editor/editor_input.dart';
 import '../widgets/editor/editor_scaffold.dart';
 import '../widgets/editor/editor_section.dart';
 
-import '../widgets/editor/editor_input.dart';
+
 
 class ConditionEditor extends StatefulWidget {
   final IfAction action;
@@ -72,10 +72,11 @@ class _ConditionEditorState extends State<ConditionEditor> {
               children: [
                   EditorSection(
                       title: "Condition Expression",
-                      hint: "Use variables like {{res.status}} in expressions.",
+                      hint: "Use variables like \$res.status in expressions.",
                       child: EditorTextField(
                           controller: _ctl,
-                          hintText: "{{res.status}} == 200",
+                          hintText: "\$res.status == 200",
+                          enableDslInput: true,
                       ),
                   ),
                   EditorSection(
@@ -97,3 +98,4 @@ class _ConditionEditorState extends State<ConditionEditor> {
       );
   }
 }
+

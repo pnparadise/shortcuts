@@ -30,6 +30,8 @@ class LogicEngine(private val androidContext: Context) {
                     is Action.Return -> true
                     is Action.Clipboard -> { executeClipboard(action, contextManager); false }
                     is Action.Intent -> { executeIntent(action, contextManager); false }
+                    is Action.Notification -> { executeNotification(action, contextManager); false }
+                    is Action.Expression -> { executeExpression(action, contextManager); false }
                 }
                 
                 if (shouldStop) {
@@ -97,18 +99,13 @@ class LogicEngine(private val androidContext: Context) {
 
     private suspend fun executeIf(action: Action.If, cm: ContextManager): Boolean {
         val rawExpression = action.conditionExpression
-        // Interpolate first to resolve variables
-        val resolved = cm.interpolate(rawExpression)
-        android.util.Log.d("LowCode", "LogicEngine: IF expression raw='$rawExpression' resolved='$resolved'")
+        android.util.Log.d("LowCode", "LogicEngine: IF expression='$rawExpression'")
 
-        val isTrue = try {
-            evaluateExpression(resolved)
-        } catch (e: Exception) {
-            android.util.Log.e("LowCode", "LogicEngine: Expression evaluation failed", e)
-            false
-        }
+        // Use ExpressionEngine for evaluation
+        val result = ExpressionEngine.evaluate(rawExpression, cm)
+        val isTrue = ExpressionEngine.isTruthy(result)
 
-        android.util.Log.d("LowCode", "LogicEngine: IF result=$isTrue")
+        android.util.Log.d("LowCode", "LogicEngine: IF result=$isTrue (value=$result)")
 
         return if (isTrue) {
             executeFlow(action.trueFlow, cm)
@@ -117,64 +114,6 @@ class LogicEngine(private val androidContext: Context) {
         }
     }
 
-    private fun evaluateExpression(expr: String): Boolean {
-        // 1. Handle OR (||) - Lowest precedence, split first
-        if (expr.contains("||")) {
-            val parts = expr.split("||")
-            // If ANY part is true, return true
-            return parts.any { evaluateExpression(it.trim()) }
-        }
-
-        // 2. Handle AND (&&) - Higher precedence than OR
-        if (expr.contains("&&")) {
-            val parts = expr.split("&&")
-            // If ALL parts are true, return true
-            return parts.all { evaluateExpression(it.trim()) }
-        }
-
-        // 3. Handle Atomic Logic (==, !=, >, <, etc)
-        return evaluateAtomic(expr.trim())
-    }
-
-    private fun evaluateAtomic(resolved: String): Boolean {
-        return when {
-            resolved.contains("==") -> {
-                val parts = resolved.split("==", limit = 2)
-                parts[0].trim() == parts[1].trim()
-            }
-            resolved.contains("!=") -> {
-                val parts = resolved.split("!=", limit = 2)
-                parts[0].trim() != parts[1].trim()
-            }
-            resolved.contains(">=") -> {
-                val parts = resolved.split(">=", limit = 2)
-                parts[0].trim().toDouble() >= parts[1].trim().toDouble()
-            }
-            resolved.contains("<=") -> {
-                val parts = resolved.split("<=", limit = 2)
-                parts[0].trim().toDouble() <= parts[1].trim().toDouble()
-            }
-            resolved.contains(">") -> {
-                val parts = resolved.split(">", limit = 2)
-                parts[0].trim().toDouble() > parts[1].trim().toDouble()
-            }
-            resolved.contains("<") -> {
-                val parts = resolved.split("<", limit = 2)
-                parts[0].trim().toDouble() < parts[1].trim().toDouble()
-            }
-            else -> {
-                // Fallback to Truthy check
-                when (resolved.lowercase()) {
-                    "true" -> true
-                    "false" -> false
-                    "null" -> false
-                    "" -> false
-                    "0" -> false
-                    else -> true
-                }
-            }
-        }
-    }
 
     private fun executeSetView(action: Action.SetView, cm: ContextManager) {
         val text = cm.interpolate(action.textTemplate)
@@ -224,9 +163,20 @@ class LogicEngine(private val androidContext: Context) {
     private fun executeIntent(action: Action.Intent, cm: ContextManager) {
         try {
             val intent = android.content.Intent()
+            
+            // Use VIEW action if no action specified (action config removed from UI)
             if (action.action.isNotEmpty()) {
                 intent.action = action.action
+            } else {
+                intent.action = android.content.Intent.ACTION_VIEW
             }
+            
+            // Set Data URI if provided
+            if (action.dataUri.isNotEmpty()) {
+                val interpolatedUri = cm.interpolate(action.dataUri)
+                intent.data = android.net.Uri.parse(interpolatedUri)
+            }
+            
             if (action.packageName.isNotEmpty()) {
                  if (action.className != null && action.className.isNotEmpty()) {
                      intent.setClassName(action.packageName, action.className)
@@ -242,10 +192,68 @@ class LogicEngine(private val androidContext: Context) {
             intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
             
             androidContext.startActivity(intent)
-            android.util.Log.d("LowCode", "LogicEngine: Started Intent: ${action.packageName}/${action.action}")
+            android.util.Log.d("LowCode", "LogicEngine: Started Intent: ${action.packageName}/${intent.action} data=${intent.data}")
         } catch (e: Exception) {
             android.util.Log.e("LowCode", "LogicEngine: Failed to start Intent", e)
              cm.context["_error"] = e.toString()
+        }
+    }
+
+    private fun executeNotification(action: Action.Notification, cm: ContextManager) {
+        try {
+            val title = cm.interpolate(action.title)
+            val message = cm.interpolate(action.message)
+            val channelId = action.channelId
+            
+            val notificationManager = androidContext.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+            
+            // Create notification channel for Android O+
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                val channel = android.app.NotificationChannel(
+                    channelId,
+                    "Shortcuts Notifications",
+                    android.app.NotificationManager.IMPORTANCE_DEFAULT
+                )
+                notificationManager.createNotificationChannel(channel)
+            }
+            
+            val notification = android.app.Notification.Builder(androidContext, channelId)
+                .setContentTitle(title)
+                .setContentText(message)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setAutoCancel(true)
+                .build()
+            
+            val notificationId = System.currentTimeMillis().toInt()
+            notificationManager.notify(notificationId, notification)
+            
+            android.util.Log.d("LowCode", "LogicEngine: Posted notification: $title - $message")
+        } catch (e: Exception) {
+            android.util.Log.e("LowCode", "LogicEngine: Failed to post notification", e)
+            cm.context["_error"] = e.toString()
+        }
+    }
+
+    private fun executeExpression(action: Action.Expression, cm: ContextManager) {
+        android.util.Log.d("LowCode", "LogicEngine: Executing Expression script")
+        
+        // Parse multi-line script, each line is an assignment: target = expression
+        action.script.split("\n").forEach { line ->
+            val trimmedLine = line.trim()
+            if (trimmedLine.isEmpty() || trimmedLine.startsWith("//")) {
+                return@forEach // Skip empty lines and comments
+            }
+            
+            if (trimmedLine.contains("=")) {
+                val parts = trimmedLine.split("=", limit = 2)
+                val target = parts[0].trim().removePrefix("\$") // Remove $ if present
+                val expr = parts[1].trim()
+                
+                // Evaluate expression and store in context
+                val result = ExpressionEngine.evaluate(expr, cm)
+                cm.context[target] = result
+                android.util.Log.d("LowCode", "LogicEngine: Expression assigned $target = $result")
+            }
         }
     }
 }
