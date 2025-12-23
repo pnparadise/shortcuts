@@ -4,7 +4,8 @@ import '../theme/theme.dart';
 import '../widgets/pickers/variable_picker.dart';
 import '../widgets/editor/editor_scaffold.dart';
 import '../widgets/editor/editor_section.dart';
-import '../widgets/editor/input_decoration.dart';
+
+import '../widgets/editor/editor_input.dart';
 
 class ToastEditor extends StatefulWidget {
   final ToastAction action;
@@ -68,19 +69,10 @@ class _ToastEditorState extends State<ToastEditor> {
                   EditorSection(
                       title: "Message Template",
                       hint: "Supports variables like {{res.data.message}}.",
-                      child: TextField(
+                      child: EditorTextField(
                           controller: _ctl,
                           maxLines: 4,
-                          decoration: editorInputDecoration(
-                              hintText: "Operation successful!",
-                              suffixIcon: IconButton(
-                                  icon: const Icon(Icons.data_object, color: AppColors.primary),
-                                  onPressed: () => VariablePicker.show(
-                                      context,
-                                      onSelect: (v) => _insertAtCursor(_ctl, v),
-                                  ),
-                              ),
-                          ),
+                          hintText: "Operation successful!",
                       ),
                   ),
               ],

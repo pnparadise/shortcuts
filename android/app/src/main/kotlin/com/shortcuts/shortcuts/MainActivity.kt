@@ -184,11 +184,17 @@ class MainActivity: FlutterActivity() {
                              val contextManager = com.shortcuts.shortcuts.engine.ContextManager()
                              val engine = com.shortcuts.shortcuts.engine.LogicEngine(applicationContext)
                              
-                             // Run single action as a flow
-                             engine.executeFlow(listOf(action), contextManager)
+                             // Run single action as a flow on IO thread to avoid NetworkOnMainThreadException
+                             withContext(Dispatchers.IO) {
+                                 engine.executeFlow(listOf(action), contextManager)
+                             }
                              
                              // Return the resulting context (e.g. "res" -> {status: 200...})
-                             result.success(contextManager.context)
+                             if (action is com.shortcuts.shortcuts.dsl.Action.Fetch) {
+                                 result.success(contextManager.context[action.targetVar])
+                             } else {
+                                 result.success(contextManager.context)
+                             }
                          } catch (e: Exception) {
                              result.error("EXEC_ERROR", e.message, null)
                          }
@@ -204,10 +210,61 @@ class MainActivity: FlutterActivity() {
                     }
                     result.success(true)
                 }
+            } else if (call.method == "getInstalledApps") {
+                scope.launch {
+                    val apps = withContext(Dispatchers.IO) {
+                        getLaunchableApps()
+                    }
+                    result.success(apps)
+                }
             } else {
                 result.notImplemented()
             }
         }
+    }
+
+    private fun getLaunchableApps(): List<Map<String, Any>> {
+        val packageManager = applicationContext.packageManager
+        val intent = Intent(Intent.ACTION_MAIN, null)
+        intent.addCategory(Intent.CATEGORY_LAUNCHER)
+        
+        val apps = packageManager.queryIntentActivities(intent, 0)
+        
+        return apps.mapNotNull { resolveInfo ->
+            try {
+                val activityInfo = resolveInfo.activityInfo
+                val packageName = activityInfo.packageName
+                val label = resolveInfo.loadLabel(packageManager).toString()
+                
+                // Get Icon
+                val drawable = resolveInfo.loadIcon(packageManager)
+                val bitmap = if (drawable is android.graphics.drawable.BitmapDrawable) {
+                    drawable.bitmap
+                } else {
+                    val bmp = android.graphics.Bitmap.createBitmap(
+                        drawable.intrinsicWidth, 
+                        drawable.intrinsicHeight, 
+                        android.graphics.Bitmap.Config.ARGB_8888
+                    )
+                    val canvas = android.graphics.Canvas(bmp)
+                    drawable.setBounds(0, 0, canvas.width, canvas.height)
+                    drawable.draw(canvas)
+                    bmp
+                }
+                
+                val stream = java.io.ByteArrayOutputStream()
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 50, stream)
+                val iconBytes = stream.toByteArray()
+                
+                mapOf(
+                    "name" to label,
+                    "packageName" to packageName,
+                    "icon" to iconBytes
+                )
+            } catch (e: Exception) {
+                null
+            }
+        }.sortedBy { it["name"] as String }
     }
     
     override fun onNewIntent(intent: Intent) {

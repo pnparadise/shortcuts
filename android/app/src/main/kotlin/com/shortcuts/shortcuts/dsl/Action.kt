@@ -40,4 +40,21 @@ sealed interface Action {
     ) : Action {
         override val type: String = "Return"
     }
+
+    data class Clipboard(
+        val mode: String = "READ",
+        val targetVar: String = "clip",
+        val textTemplate: String = ""
+    ) : Action {
+        override val type: String = "Clipboard"
+    }
+
+    data class Intent(
+        val action: String = "android.intent.action.VIEW",
+        val packageName: String = "",
+        val className: String? = null,
+        val extras: Map<String, String> = emptyMap()
+    ) : Action {
+        override val type: String = "Intent"
+    }
 }

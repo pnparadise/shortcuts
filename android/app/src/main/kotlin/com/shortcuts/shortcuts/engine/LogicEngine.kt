@@ -28,6 +28,8 @@ class LogicEngine(private val androidContext: Context) {
                     is Action.SetView -> { executeSetView(action, contextManager); false }
                     is Action.Toast -> { executeToast(action, contextManager); false }
                     is Action.Return -> true
+                    is Action.Clipboard -> { executeClipboard(action, contextManager); false }
+                    is Action.Intent -> { executeIntent(action, contextManager); false }
                 }
                 
                 if (shouldStop) {
@@ -86,9 +88,10 @@ class LogicEngine(private val androidContext: Context) {
             // Write error to context with consistent structure
             cm.context[action.targetVar] = mapOf(
                 "status" to -1,
-                "data" to null,
-                "message" to (e.message ?: "Unknown Error")
+                "data" to mapOf("error" to (e.message ?: "Unknown Error")),
+                "message" to (e.toString())
             )
+
         }
     }
 
@@ -198,6 +201,51 @@ class LogicEngine(private val androidContext: Context) {
             } catch (e: Exception) {
                 android.util.Log.e("LowCode", "LogicEngine: Failed to start ToastActivity", e)
             }
+        }
+    }
+
+    private fun executeClipboard(action: Action.Clipboard, cm: ContextManager) {
+        val clipboard = androidContext.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        
+        if (action.mode.equals("WRITE", ignoreCase = true)) {
+            val text = cm.interpolate(action.textTemplate)
+            val clip = android.content.ClipData.newPlainText("LowCode", text)
+            clipboard.setPrimaryClip(clip)
+            android.util.Log.d("LowCode", "LogicEngine: Clipboard Write: $text")
+        } else {
+            // READ
+            val item = clipboard.primaryClip?.getItemAt(0)
+            val text = item?.text?.toString() ?: ""
+            cm.context[action.targetVar] = text
+            android.util.Log.d("LowCode", "LogicEngine: Clipboard Read: $text -> ${action.targetVar}")
+        }
+    }
+
+    private fun executeIntent(action: Action.Intent, cm: ContextManager) {
+        try {
+            val intent = android.content.Intent()
+            if (action.action.isNotEmpty()) {
+                intent.action = action.action
+            }
+            if (action.packageName.isNotEmpty()) {
+                 if (action.className != null && action.className.isNotEmpty()) {
+                     intent.setClassName(action.packageName, action.className)
+                 } else {
+                     intent.setPackage(action.packageName)
+                 }
+            }
+            
+            action.extras.forEach { (k, v) ->
+                intent.putExtra(cm.interpolate(k), cm.interpolate(v))
+            }
+            
+            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            
+            androidContext.startActivity(intent)
+            android.util.Log.d("LowCode", "LogicEngine: Started Intent: ${action.packageName}/${action.action}")
+        } catch (e: Exception) {
+            android.util.Log.e("LowCode", "LogicEngine: Failed to start Intent", e)
+             cm.context["_error"] = e.toString()
         }
     }
 }

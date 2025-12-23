@@ -4,7 +4,8 @@ import '../theme/theme.dart';
 import '../widgets/pickers/variable_picker.dart';
 import '../widgets/editor/editor_scaffold.dart';
 import '../widgets/editor/editor_section.dart';
-import '../widgets/editor/input_decoration.dart';
+
+import '../widgets/editor/editor_input.dart';
 
 class ViewEditor extends StatefulWidget {
   final SetViewAction action;
@@ -68,34 +69,10 @@ class _ViewEditorState extends State<ViewEditor> {
                   EditorSection(
                       title: "View Content",
                       hint: "Markdown or plain text. Use variables like {{res.status}}.",
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                              SizedBox(
-                                  height: 220,
-                                  child: TextField(
-                                      controller: _ctl,
-                                      maxLines: null,
-                                      expands: true,
-                                      textAlignVertical: TextAlignVertical.top,
-                                      decoration: editorInputDecoration(
-                                          hintText: "# Dashboard\nStatus: {{res.status}}",
-                                      ),
-                                  ),
-                              ),
-                              const SizedBox(height: 8),
-                              Align(
-                                  alignment: Alignment.centerRight,
-                                  child: TextButton.icon(
-                                      icon: const Icon(Icons.data_object, size: 18),
-                                      label: const Text("Insert Variable"),
-                                      onPressed: () => VariablePicker.show(
-                                          context,
-                                          onSelect: (v) => _insertAtCursor(_ctl, v),
-                                      ),
-                                  ),
-                              ),
-                          ],
+                      child: EditorTextField(
+                          controller: _ctl,
+                          maxLines: 15, // TextArea
+                          hintText: "# Dashboard\nStatus: {{res.status}}",
                       ),
                   ),
               ],

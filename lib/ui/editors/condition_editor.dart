@@ -4,7 +4,8 @@ import '../theme/theme.dart';
 import '../widgets/pickers/variable_picker.dart';
 import '../widgets/editor/editor_scaffold.dart';
 import '../widgets/editor/editor_section.dart';
-import '../widgets/editor/input_decoration.dart';
+
+import '../widgets/editor/editor_input.dart';
 
 class ConditionEditor extends StatefulWidget {
   final IfAction action;
@@ -72,19 +73,9 @@ class _ConditionEditorState extends State<ConditionEditor> {
                   EditorSection(
                       title: "Condition Expression",
                       hint: "Use variables like {{res.status}} in expressions.",
-                      child: TextField(
+                      child: EditorTextField(
                           controller: _ctl,
-                          style: const TextStyle(fontFamily: "monospace", fontSize: 13),
-                          decoration: editorInputDecoration(
-                              hintText: "{{res.status}} == 200",
-                              suffixIcon: IconButton(
-                                  icon: const Icon(Icons.data_object, color: AppColors.primary),
-                                  onPressed: () => VariablePicker.show(
-                                      context,
-                                      onSelect: (v) => _insertAtCursor(_ctl, v),
-                                  ),
-                              ),
-                          ),
+                          hintText: "{{res.status}} == 200",
                       ),
                   ),
                   EditorSection(
@@ -96,7 +87,7 @@ class _ConditionEditorState extends State<ConditionEditor> {
                               .map((op) => ActionChip(
                                   backgroundColor: AppColors.inputBg,
                                   label: Text(op, style: const TextStyle(color: AppColors.textHeader)),
-                                  onPressed: () => _ctl.text = "${_ctl.text} $op ",
+                                  onPressed: () => _insertAtCursor(_ctl, " $op "),
                               ))
                               .toList(),
                       ),

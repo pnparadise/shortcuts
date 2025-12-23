@@ -48,11 +48,24 @@ class ActionPicker extends StatelessWidget {
                 onTap: () => Navigator.pop(context, SetViewAction()),
               ),
               _ActionOption(
+                icon: Icons.assignment_outlined,
+                label: "Clipboard",
+                description: "Read/Write Clip",
+                onTap: () => Navigator.pop(context, ClipboardAction()),
+              ),
+              _ActionOption(
+                icon: Icons.launch,
+                label: "Intent Jump",
+                description: "Open other Apps",
+                onTap: () => Navigator.pop(context, IntentAction()),
+              ),
+              _ActionOption(
                 icon: Icons.stop_circle_outlined,
                 label: "Return",
                 description: "Stop Execution",
                 onTap: () => Navigator.pop(context, ReturnAction()),
               ),
+
             ],
           ),
           const SizedBox(height: 24),

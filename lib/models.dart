@@ -53,6 +53,12 @@ abstract class Action {
       case 'Toast':
       case 'toast':
         return ToastAction.fromJson(json);
+      case 'Clipboard':
+      case 'clipboard':
+        return ClipboardAction.fromJson(json);
+      case 'Intent':
+      case 'intent':
+        return IntentAction.fromJson(json);
       case 'Return':
       case 'return':
         return ReturnAction.fromJson(json);
@@ -222,3 +228,97 @@ class ReturnAction extends Action {
         'stop': stop,
       };
 }
+
+class ClipboardAction extends Action {
+  final String mode; // 'READ' or 'WRITE'
+  final String targetVar; // Used for READ
+  final String textTemplate; // Used for WRITE
+
+  ClipboardAction({
+    this.mode = 'READ',
+    this.targetVar = 'clip',
+    this.textTemplate = '',
+  });
+
+  @override
+  String get type => 'Clipboard';
+
+  factory ClipboardAction.fromJson(Map<String, dynamic> json) {
+    return ClipboardAction(
+      mode: json['mode'] ?? 'READ',
+      targetVar: json['targetVar'] ?? 'clip',
+      textTemplate: json['textTemplate'] ?? '',
+    );
+  }
+
+  ClipboardAction copyWith({
+    String? mode,
+    String? targetVar,
+    String? textTemplate,
+  }) {
+    return ClipboardAction(
+      mode: mode ?? this.mode,
+      targetVar: targetVar ?? this.targetVar,
+      textTemplate: textTemplate ?? this.textTemplate,
+    );
+  }
+
+  @override
+  Map<String, dynamic> toJson() => {
+        'type': type,
+        'mode': mode,
+        'targetVar': targetVar,
+        'textTemplate': textTemplate,
+      };
+}
+
+class IntentAction extends Action {
+  final String action;
+  final String packageName;
+  final String? className;
+  final Map<String, String> extras;
+
+  IntentAction({
+    this.action = 'android.intent.action.VIEW',
+    this.packageName = '',
+    this.className,
+    this.extras = const {},
+  });
+
+  @override
+  String get type => 'Intent';
+
+  factory IntentAction.fromJson(Map<String, dynamic> json) {
+    return IntentAction(
+      action: json['action'] ?? 'android.intent.action.VIEW',
+      packageName: json['packageName'] ?? '',
+      className: json['className'],
+      extras: (json['extras'] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v.toString())) ?? const {},
+    );
+  }
+
+  IntentAction copyWith({
+    String? action,
+    String? packageName,
+    String? className,
+    Map<String, String>? extras,
+  }) {
+    return IntentAction(
+      action: action ?? this.action,
+      packageName: packageName ?? this.packageName,
+      className: className ?? this.className,
+      extras: extras ?? this.extras,
+    );
+  }
+
+  @override
+  Map<String, dynamic> toJson() => {
+        'type': type,
+        'action': action,
+        'packageName': packageName,
+        'className': className,
+        'extras': extras,
+      };
+}
+
+

@@ -11,6 +11,8 @@ class ActionTile extends StatefulWidget {
   final Function(String title, List<Action> flow, ValueChanged<List<Action>> onUpdate)? onNavToFlow;
   final ValueChanged<Action>? onChanged;
   final int index;
+  final bool isReorderable;
+  final bool headerOnly;
 
   const ActionTile({
     super.key,
@@ -21,6 +23,8 @@ class ActionTile extends StatefulWidget {
     this.onNavToFlow,
     this.onChanged,
     required this.index,
+    this.isReorderable = false,
+    this.headerOnly = false,
   });
 
   @override
@@ -63,6 +67,18 @@ class _ActionTileState extends State<ActionTile> {
       icon = Icons.view_quilt;
       iconColor = AppColors.success;
       subtitle = "Update UI: ${(widget.action as SetViewAction).textTemplate.replaceAll('\n', ' ')}";
+    } else if (widget.action is ClipboardAction) {
+      final c = widget.action as ClipboardAction;
+      icon = Icons.assignment_outlined;
+      iconColor = Colors.deepPurple;
+      title = c.mode == 'READ' ? "Clipboard -> ${c.targetVar}" : "Text -> Clipboard";
+      subtitle = c.mode == 'READ' ? "Reads clipboard into variable" : "Writes template to clipboard";
+    } else if (widget.action is IntentAction) {
+      final i = widget.action as IntentAction;
+      icon = Icons.launch;
+      iconColor = Colors.orange;
+      title = "Jump -> ${i.packageName.split('.').last}";
+      subtitle = "Launch ${i.packageName} with extras";
     } else if (widget.action is ReturnAction) {
       icon = Icons.stop_circle_outlined;
       iconColor = AppColors.danger;
@@ -103,7 +119,17 @@ class _ActionTileState extends State<ActionTile> {
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
+                const SizedBox(width: 12),
+                if (widget.isReorderable)
+                  ReorderableDragStartListener(
+                    index: widget.index,
+                    child: const Padding(
+                      padding: EdgeInsets.all(8),
+                      child: Icon(Icons.apps, color: AppColors.textMuted, size: 20),
+                    ),
+                  )
+                else
+                  const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
               ],
             ),
           ),
@@ -179,6 +205,14 @@ class _ActionTileState extends State<ActionTile> {
                           child: Icon(Icons.edit, size: 16, color: Colors.grey),
                         ),
                       ),
+                      if (widget.isReorderable)
+                        ReorderableDragStartListener(
+                          index: widget.index,
+                          child: const Padding(
+                            padding: EdgeInsets.all(8),
+                            child: Icon(Icons.apps, color: AppColors.textMuted, size: 20),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -187,7 +221,7 @@ class _ActionTileState extends State<ActionTile> {
         ),
 
         // Blocks
-        if (_isExpanded) ...[
+        if (_isExpanded && !widget.headerOnly) ...[
         _buildBranchBlock(
             label: "THEN", 
             color: AppColors.success, 
