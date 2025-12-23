@@ -3,11 +3,11 @@ import '../../models.dart';
 import '../theme/theme.dart';
 import '../widgets/editor/editor_scaffold.dart';
 import '../widgets/editor/editor_section.dart';
-import '../widgets/editor/dsl_input.dart';
+import '../widgets/editor/editor_input.dart';
 import '../screens/dsl_wiki_screen.dart';
 
 /// Expression editor with multi-line DSL input and auto-completion.
-/// Uses the reusable DslInput component with blue/white theme.
+/// Uses the reusable EditorTextField component with DSL mode enabled.
 class ExpressionEditor extends StatefulWidget {
   final ExpressionAction action;
   final ValueChanged<ExpressionAction> onSave;
@@ -58,10 +58,11 @@ class _ExpressionEditorState extends State<ExpressionEditor> {
           EditorSection(
             title: "DSL Script",
             hint: "Multi-line expression script",
-            child: DslInput(
+            child: EditorTextField(
               controller: _scriptCtl,
               maxLines: 10,
               hintText: '// 示例\nid = GET_PARAM \$url "id"\nname = UPPER \$res.data.name',
+              enableDslInput: true,
               contextVariables: const ['url', 'res', 'res.data', 'res.status', 'item', 'item.id', 'clip'],
             ),
           ),
@@ -81,3 +82,4 @@ class _ExpressionEditorState extends State<ExpressionEditor> {
     );
   }
 }
+

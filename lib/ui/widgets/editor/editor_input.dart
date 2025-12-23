@@ -1,38 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../theme/theme.dart';
-
-/// Suggestion type for DSL completion items
-enum DslSuggestionType { variable, command, operator, keyword }
-
-/// Completion suggestion model for DSL input
-class DslSuggestion {
-  final String display;
-  final String insertText;
-  final DslSuggestionType type;
-
-  const DslSuggestion({
-    required this.display,
-    required this.insertText,
-    required this.type,
-  });
-
-  IconData get icon => switch (type) {
-    DslSuggestionType.variable => Icons.attach_money,
-    DslSuggestionType.command => Icons.terminal,
-    DslSuggestionType.operator => Icons.compare_arrows,
-    DslSuggestionType.keyword => Icons.key,
-  };
-
-  Color get color => switch (type) {
-    DslSuggestionType.variable => const Color(0xFF0EA5E9),  // Sky blue
-    DslSuggestionType.command => const Color(0xFF6366F1),   // Indigo
-    DslSuggestionType.operator => const Color(0xFF64748B),  // Slate
-    DslSuggestionType.keyword => const Color(0xFF8B5CF6),   // Violet
-  };
-}
+import 'dsl_overlay.dart';
 
 class EditorInputTheme {
-  // Shared styling constants
   static const double height = 48.0;
   static const Color fillColor = AppColors.inputBg;
   static const EdgeInsets contentPadding = EdgeInsets.symmetric(horizontal: 12, vertical: 14);
@@ -70,21 +40,6 @@ class _EditorTextFieldState extends State<EditorTextField> {
   OverlayEntry? _overlayEntry;
   final LayerLink _layerLink = LayerLink();
 
-  // DSL v2.0 Commands
-  static const List<String> _commands = [
-    'GET_HOST', 'GET_PARAM', 'GET_PATH',
-    'UPPER', 'LOWER', 'TRIM', 'LENGTH', 'REPLACE', 'SUBSTRING',
-  ];
-
-  // Infix operators
-  static const List<String> _operators = [
-    'CONTAINS', 'STARTS_WITH', 'ENDS_WITH',
-    '==', '!=', '&&', '||', '?:', '>', '<', '>=', '<=',
-  ];
-
-  // Keywords
-  static const List<String> _keywords = ['true', 'false', 'null'];
-
   @override
   void initState() {
     super.initState();
@@ -109,7 +64,11 @@ class _EditorTextFieldState extends State<EditorTextField> {
   void _onFocusChanged() {
     if (_focusNode.hasFocus) {
       _updateSuggestions();
-      _showOverlay();
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted && _focusNode.hasFocus) {
+          _showOverlay();
+        }
+      });
     } else {
       _removeOverlay();
     }
@@ -122,13 +81,15 @@ class _EditorTextFieldState extends State<EditorTextField> {
 
   void _showOverlay() {
     if (_overlayEntry != null || !widget.enableDslInput) return;
-    if (_suggestions.isEmpty) return;
     
     final overlayState = Overlay.of(context);
     _overlayEntry = OverlayEntry(
-      builder: (context) => _buildSuggestionsOverlay(),
+      builder: (context) => DslOverlay.build(
+        suggestions: _suggestions,
+        onInsertSymbol: _insertSymbol,
+        onApplySuggestion: _applySuggestion,
+      ),
     );
-    
     overlayState.insert(_overlayEntry!);
   }
 
@@ -137,77 +98,31 @@ class _EditorTextFieldState extends State<EditorTextField> {
     _overlayEntry = null;
   }
 
-  Widget _buildSuggestionsOverlay() {
-    if (_suggestions.isEmpty) return const SizedBox.shrink();
-
-    return Positioned(
-      width: MediaQuery.of(context).size.width,
-      bottom: MediaQuery.of(context).viewInsets.bottom,
-      child: Material(
-        elevation: 8,
-        color: AppColors.cardBg,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(height: 1, color: AppColors.border),
-            Container(
-              height: 48,
-              decoration: const BoxDecoration(
-                color: AppColors.inputBg,
-              ),
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                itemCount: _suggestions.length,
-                itemBuilder: (ctx, index) {
-                  final suggestion = _suggestions[index];
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: InkWell(
-                        onTap: () => _applySuggestion(suggestion),
-                        borderRadius: BorderRadius.circular(6),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: suggestion.color.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: suggestion.color.withOpacity(0.3),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                suggestion.icon,
-                                size: 14,
-                                color: suggestion.color,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                suggestion.display,
-                                style: TextStyle(
-                                  fontFamily: 'monospace',
-                                  fontSize: 13,
-                                  color: suggestion.color,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
+  void _insertSymbol(String symbol) {
+    final pos = widget.controller.selection.baseOffset;
+    final text = widget.controller.text;
+    
+    String insertText = symbol;
+    int cursorOffset = symbol.length;
+    
+    if (symbol == '"') {
+      final beforeCursor = pos >= 0 ? text.substring(0, pos) : text;
+      final quoteCount = beforeCursor.split('"').length - 1;
+      if (quoteCount % 2 == 0) {
+        insertText = '""';
+        cursorOffset = 1;
+      }
+    }
+    
+    final newText = pos >= 0 
+        ? text.substring(0, pos) + insertText + text.substring(pos)
+        : text + insertText;
+    
+    widget.controller.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: (pos >= 0 ? pos : text.length) + cursorOffset),
     );
+    _focusNode.requestFocus();
   }
 
   void _updateSuggestions() {
@@ -226,44 +141,31 @@ class _EditorTextFieldState extends State<EditorTextField> {
 
     final cursorPos = selection.baseOffset;
     final prefix = text.substring(0, cursorPos);
-    
-    // Extract last word
     final parts = prefix.split(RegExp(r'[\s()+\-*/<>=!&|,]'));
     final lastWord = parts.isNotEmpty ? parts.last : '';
 
     List<DslSuggestion> suggestions;
 
     if (lastWord.startsWith('\$')) {
-      // Variable completion
-      final varPath = lastWord.substring(1);
-      suggestions = _getVariableSuggestions(varPath);
+      suggestions = _getVariableSuggestions(lastWord.substring(1));
     } else if (_isInInterpolation(prefix)) {
-      // String interpolation
       final varPath = lastWord.contains('\$') 
           ? lastWord.substring(lastWord.lastIndexOf('\$') + 1)
           : '';
       suggestions = _getVariableSuggestions(varPath);
     } else if (_isExpectOperator(prefix)) {
-      // Operator expected
-      suggestions = _operators
+      suggestions = DslOverlay.operators
           .where((op) => lastWord.isEmpty || op.toUpperCase().startsWith(lastWord.toUpperCase()))
-          .map((op) => DslSuggestion(
-            display: op,
-            insertText: ' $op ',
-            type: DslSuggestionType.operator,
-          ))
+          .map((op) => DslSuggestion(display: op, insertText: ' $op ', type: DslSuggestionType.operator))
           .toList();
     } else {
-      // Default: commands and keywords
       suggestions = _getDefaultSuggestions(filter: lastWord);
     }
 
     if (mounted) {
       setState(() => _suggestions = suggestions.take(10).toList());
-      if (_suggestions.isNotEmpty && _overlayEntry == null && _focusNode.hasFocus) {
+      if (_overlayEntry == null && _focusNode.hasFocus) {
         _showOverlay();
-      } else if (_suggestions.isEmpty) {
-        _removeOverlay();
       } else {
         _overlayEntry?.markNeedsBuild();
       }
@@ -272,61 +174,40 @@ class _EditorTextFieldState extends State<EditorTextField> {
 
   List<DslSuggestion> _getDefaultSuggestions({String filter = ''}) {
     final all = <DslSuggestion>[];
-
-    // Commands
-    for (final cmd in _commands) {
+    for (final cmd in DslOverlay.commands) {
       if (filter.isEmpty || cmd.toUpperCase().startsWith(filter.toUpperCase())) {
-        all.add(DslSuggestion(
-          display: cmd,
-          insertText: '$cmd ',
-          type: DslSuggestionType.command,
-        ));
+        all.add(DslSuggestion(display: cmd, insertText: '$cmd ', type: DslSuggestionType.command));
       }
     }
-
-    // Keywords
-    for (final kw in _keywords) {
+    for (final kw in DslOverlay.keywords) {
       if (filter.isEmpty || kw.startsWith(filter.toLowerCase())) {
-        all.add(DslSuggestion(
-          display: kw,
-          insertText: kw,
-          type: DslSuggestionType.keyword,
-        ));
+        all.add(DslSuggestion(display: kw, insertText: kw, type: DslSuggestionType.keyword));
       }
     }
-
     return all;
   }
 
   List<DslSuggestion> _getVariableSuggestions(String partialPath) {
     return widget.contextVariables
         .where((v) => partialPath.isEmpty || v.toLowerCase().contains(partialPath.toLowerCase()))
-        .map((v) => DslSuggestion(
-          display: v,
-          insertText: v,
-          type: DslSuggestionType.variable,
-        ))
+        .map((v) => DslSuggestion(display: v, insertText: v, type: DslSuggestionType.variable))
         .toList();
   }
 
   bool _isInInterpolation(String prefix) {
     final quoteCount = prefix.split('"').length - 1;
     if (quoteCount % 2 == 0) return false;
-    final lastQuoteIdx = prefix.lastIndexOf('"');
-    return prefix.substring(lastQuoteIdx).contains('\$');
+    return prefix.substring(prefix.lastIndexOf('"')).contains('\$');
   }
 
   bool _isExpectOperator(String prefix) {
     final trimmed = prefix.trim();
     if (trimmed.isEmpty) return false;
-    
     if (trimmed.endsWith('"') || trimmed.endsWith(')')) return true;
-    
     final lastToken = trimmed.split(RegExp(r'\s+')).last;
     return lastToken.startsWith('\$') ||
            RegExp(r'^-?\d+(\.\d+)?$').hasMatch(lastToken) ||
-           lastToken == 'true' ||
-           lastToken == 'false';
+           lastToken == 'true' || lastToken == 'false';
   }
 
   void _applySuggestion(DslSuggestion suggestion) {
@@ -345,7 +226,6 @@ class _EditorTextFieldState extends State<EditorTextField> {
       if (dollarIdx >= 0) {
         replaceStart = dollarIdx + 1;
       } else {
-        replaceStart = cursorPos;
         insertText = '\$$insertText';
       }
     } else {
@@ -360,51 +240,28 @@ class _EditorTextFieldState extends State<EditorTextField> {
     }
 
     final newText = text.substring(0, replaceStart) + insertText + afterCursor;
-    final newCursor = replaceStart + insertText.length;
-
     widget.controller.value = TextEditingValue(
       text: newText,
-      selection: TextSelection.collapsed(offset: newCursor),
+      selection: TextSelection.collapsed(offset: replaceStart + insertText.length),
     );
-    // Keep focus but update suggestions
     _focusNode.requestFocus();
     _updateSuggestions();
   }
 
-  void _insertAtCursor(String text) {
-    final selection = widget.controller.selection;
-    final currentText = widget.controller.text;
-    final newText = selection.baseOffset >= 0
-        ? currentText.replaceRange(selection.start, selection.end, text)
-        : currentText + text;
-    widget.controller.value = TextEditingValue(
-      text: newText,
-      selection: TextSelection.collapsed(offset: (selection.baseOffset >= 0 ? selection.start : currentText.length) + text.length),
-    );
-    widget.onChanged?.call(newText);
-  }
-
   @override
   Widget build(BuildContext context) {
-    // If DSL input is enabled, use a simpler TextField with DSL overlay
     if (widget.enableDslInput) {
       return CompositedTransformTarget(
         link: _layerLink,
         child: Container(
           height: widget.maxLines == 1 ? EditorInputTheme.height : null,
-          decoration: BoxDecoration(
-            color: EditorInputTheme.fillColor,
-          ),
+          decoration: const BoxDecoration(color: EditorInputTheme.fillColor),
           child: TextField(
             controller: widget.controller,
             focusNode: _focusNode,
             maxLines: widget.maxLines,
             minLines: widget.maxLines == null ? 4 : 1,
-            style: const TextStyle(
-              fontFamily: 'monospace',
-              fontSize: 14,
-              color: AppColors.textBody,
-            ),
+            style: const TextStyle(fontFamily: 'monospace', fontSize: 14, color: AppColors.textBody),
             decoration: InputDecoration(
               hintText: widget.hintText,
               hintStyle: EditorInputTheme.hintStyle,
@@ -420,56 +277,80 @@ class _EditorTextFieldState extends State<EditorTextField> {
       );
     }
 
-    // Original Autocomplete-based implementation
     return LayoutBuilder(
       builder: (context, constraints) {
         return Autocomplete<String>(
-           textEditingController: widget.controller,
-           focusNode: _focusNode,
-           optionsBuilder: (TextEditingValue textEditingValue) {
-             if (textEditingValue.text == '') {
-               return widget.autofillHints;
-             }
-             return widget.autofillHints.where((String option) {
-               return option.toLowerCase().contains(textEditingValue.text.toLowerCase());
-             });
-           },
-           onSelected: (String selection) {
-              widget.controller.text = selection;
-              widget.onChanged?.call(selection);
-           },
-           fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-              return Container(
-                height: widget.maxLines == 1 ? EditorInputTheme.height : null,
-                decoration: BoxDecoration(
-                  color: EditorInputTheme.fillColor,
-                  // No border, No radius
-                ),
-                child: TextField(
-                  controller: widget.controller,
-                  maxLines: widget.maxLines,
-                  minLines: widget.maxLines == null ? 4 : 1,
-                  style: EditorInputTheme.textStyle,
-                  focusNode: widget.autofillHints.isNotEmpty ? focusNode : null,
-                  decoration: InputDecoration(
-                    hintText: widget.hintText,
-                    hintStyle: EditorInputTheme.hintStyle,
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    contentPadding: EditorInputTheme.contentPadding,
-                    isDense: true,
+          textEditingController: widget.controller,
+          focusNode: _focusNode,
+          optionsBuilder: (textEditingValue) {
+            // Show all options when empty, filter when typing
+            if (textEditingValue.text.isEmpty) {
+              return widget.autofillHints;
+            }
+            return widget.autofillHints.where((opt) => opt.toLowerCase().contains(textEditingValue.text.toLowerCase()));
+          },
+          onSelected: (selection) {
+            widget.controller.text = selection;
+            widget.onChanged?.call(selection);
+          },
+          optionsViewBuilder: (context, onSelected, options) {
+            return Align(
+              alignment: Alignment.topLeft,
+              child: Material(
+                elevation: 4,
+                borderRadius: BorderRadius.circular(8),
+                color: AppColors.cardBg,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 200),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: options.map((opt) => InkWell(
+                        onTap: () => onSelected(opt),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          child: Text(
+                            opt,
+                            style: EditorInputTheme.textStyle,
+                          ),
+                        ),
+                      )).toList(),
+                    ),
                   ),
-                  onChanged: widget.onChanged,
                 ),
-              );
-           }
+              ),
+            );
+          },
+          fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+            return Container(
+              height: widget.maxLines == 1 ? EditorInputTheme.height : null,
+              decoration: const BoxDecoration(color: EditorInputTheme.fillColor),
+              child: TextField(
+                controller: widget.controller,
+                maxLines: widget.maxLines,
+                minLines: widget.maxLines == null ? 4 : 1,
+                style: EditorInputTheme.textStyle,
+                focusNode: widget.autofillHints.isNotEmpty ? focusNode : null,
+                decoration: InputDecoration(
+                  hintText: widget.hintText,
+                  hintStyle: EditorInputTheme.hintStyle,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  contentPadding: EditorInputTheme.contentPadding,
+                  isDense: true,
+                ),
+                onChanged: widget.onChanged,
+              ),
+            );
+          },
         );
-      }
+      },
     );
   }
 }
-
 
 class EditorSelectField<T> extends StatelessWidget {
   final T? value;
@@ -490,10 +371,7 @@ class EditorSelectField<T> extends StatelessWidget {
     return Container(
       height: EditorInputTheme.height,
       padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: const BoxDecoration(
-        color: EditorInputTheme.fillColor,
-        // No border, No radius
-      ),
+      decoration: const BoxDecoration(color: EditorInputTheme.fillColor),
       alignment: Alignment.centerLeft,
       child: DropdownButtonHideUnderline(
         child: DropdownButton<T>(

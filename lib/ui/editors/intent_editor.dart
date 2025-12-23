@@ -77,7 +77,6 @@ class _IntentEditorSheetState extends State<IntentEditorSheet> {
                     child: EditorTextField(
                       controller: _packageCtl,
                       hintText: "com.example.app",
-                      enableDslInput: true,
                     ),
                 ),
                 const SizedBox(width: 8),
@@ -100,7 +99,6 @@ class _IntentEditorSheetState extends State<IntentEditorSheet> {
             child: EditorTextField(
               controller: _classCtl,
               hintText: "com.example.app.MainActivity",
-              enableDslInput: true,
             ),
           ),
           EditorSection(
@@ -108,7 +106,6 @@ class _IntentEditorSheetState extends State<IntentEditorSheet> {
             child: EditorTextField(
               controller: _dataUriCtl,
               hintText: "taobao://m.taobao.com/",
-              enableDslInput: true,
             ),
           ),
           EditorSection(

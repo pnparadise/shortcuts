@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models.dart';
 import '../theme/theme.dart';
-import '../widgets/editor/dsl_input.dart';
+import '../widgets/editor/editor_input.dart';
 import '../widgets/editor/editor_scaffold.dart';
 import '../widgets/editor/editor_section.dart';
 
@@ -61,18 +61,20 @@ class _NotificationEditorState extends State<NotificationEditor> {
                   EditorSection(
                       title: "Title",
                       hint: "Notification title (supports variables)",
-                      child: DslInput(
+                      child: EditorTextField(
                           controller: _titleCtl,
                           hintText: "Task Complete",
+                          enableDslInput: true,
                       ),
                   ),
                   EditorSection(
                       title: "Message",
                       hint: "Notification body (supports variables)",
-                      child: DslInput(
+                      child: EditorTextField(
                           controller: _messageCtl,
                           maxLines: 3,
                           hintText: "Your task has been completed successfully.",
+                          enableDslInput: true,
                       ),
                   ),
               ],
@@ -80,3 +82,4 @@ class _NotificationEditorState extends State<NotificationEditor> {
       );
   }
 }
+

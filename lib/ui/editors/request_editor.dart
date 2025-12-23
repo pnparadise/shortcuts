@@ -304,21 +304,48 @@ class _FetchEditorSheetState extends State<FetchEditorSheet> with SingleTickerPr
                       valueLabel: "Value",
                       keySuggestions: _commonHeaders,
                       valueSuggestions: (key) {
-                        if (key.toLowerCase() == 'content-type') {
-                          return const [
-                            "application/json", 
-                            "application/x-www-form-urlencoded", 
-                            "multipart/form-data",
-                            "text/plain",
-                            "text/html",
-                            "application/xml",
-                            "application/javascript"
-                          ];
+                        switch (key.toLowerCase()) {
+                          case 'content-type':
+                            return const [
+                              "application/json", 
+                              "application/x-www-form-urlencoded", 
+                              "multipart/form-data",
+                              "text/plain",
+                              "text/html",
+                              "application/xml",
+                            ];
+                          case 'accept':
+                            return const [
+                              "application/json",
+                              "*/*",
+                              "text/html",
+                              "text/plain",
+                              "application/xml",
+                            ];
+                          case 'authorization':
+                            return const [
+                              "Bearer ",
+                              "Basic ",
+                            ];
+                          case 'cache-control':
+                            return const [
+                              "no-cache",
+                              "no-store",
+                              "max-age=0",
+                              "max-age=3600",
+                            ];
+                          case 'connection':
+                            return const ["keep-alive", "close"];
+                          case 'accept-encoding':
+                            return const ["gzip, deflate, br", "gzip", "identity"];
+                          case 'accept-language':
+                            return const ["zh-CN,zh;q=0.9,en;q=0.8", "en-US,en;q=0.9"];
+                          default:
+                            return [];
                         }
-                        return [];
                       },
                       onChanged: (newHeaders) => setState(() => _headers = newHeaders),
-                  ),
+                   ),
               ),
           ],
       );
@@ -368,6 +395,7 @@ class _FetchEditorSheetState extends State<FetchEditorSheet> with SingleTickerPr
                         controller: _jsonBodyCtl,
                         maxLines: 15, // TextArea mode
                         hintText: "{\n  \"key\": \"value\"\n}",
+                        enableDslInput: true,
                     ),
                 )
              else if (_bodyType == BodyType.formData)
@@ -378,7 +406,7 @@ class _FetchEditorSheetState extends State<FetchEditorSheet> with SingleTickerPr
                         items: _formData,
                         keyLabel: "Field",
                         valueLabel: "Value",
-                        onChanged: (newData) => setState(() => _formData = newData),
+                           onChanged: (newData) => setState(() => _formData = newData),
                     ),
                 )
              else

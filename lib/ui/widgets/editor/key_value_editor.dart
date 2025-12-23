@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../theme/theme.dart';
 import 'editor_input.dart';
-import 'dsl_input.dart';
 
 class KeyValueEditor extends StatefulWidget {
   final Map<String, String> items;
@@ -21,7 +20,7 @@ class KeyValueEditor extends StatefulWidget {
     this.valueLabel = "Value",
     this.keySuggestions = const [],
     this.valueSuggestions,
-    this.enableDslValue = false,
+    this.enableDslValue = true,
     this.contextVariables = const ['res', 'res.data', 'res.status', 'clip', 'url'],
   });
 
@@ -81,20 +80,12 @@ class _KeyValueEditorState extends State<KeyValueEditor> {
     final controller = TextEditingController(text: _rows[index].value)
       ..selection = TextSelection.collapsed(offset: _rows[index].value.length);
 
-    if (widget.enableDslValue) {
-      return DslInput(
-        controller: controller,
-        hintText: widget.valueLabel,
-        contextVariables: widget.contextVariables,
-        showSymbolBar: false,
-        onChanged: (v) => _onRowChanged(index, _rows[index].key, v),
-      );
-    }
-
     return EditorTextField(
       controller: controller,
       hintText: widget.valueLabel,
       autofillHints: widget.valueSuggestions?.call(_rows[index].key) ?? const [],
+      enableDslInput: widget.enableDslValue,
+      contextVariables: widget.contextVariables,
       onChanged: (v) => _onRowChanged(index, _rows[index].key, v),
     );
   }

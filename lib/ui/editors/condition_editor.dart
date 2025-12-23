@@ -79,20 +79,6 @@ class _ConditionEditorState extends State<ConditionEditor> {
                           enableDslInput: true,
                       ),
                   ),
-                  EditorSection(
-                      title: "Operators",
-                      child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: ["==", "!=", ">", "<", ">=", "<=", "&&", "||"]
-                              .map((op) => ActionChip(
-                                  backgroundColor: AppColors.inputBg,
-                                  label: Text(op, style: const TextStyle(color: AppColors.textHeader)),
-                                  onPressed: () => _insertAtCursor(_ctl, " $op "),
-                              ))
-                              .toList(),
-                      ),
-                  ),
               ],
           ),
       );
