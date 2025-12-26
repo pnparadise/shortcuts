@@ -5,11 +5,10 @@ import '../widgets/editor/editor_input.dart';
 import '../widgets/editor/editor_scaffold.dart';
 import '../widgets/editor/editor_section.dart';
 
-
-
 class ViewEditor extends StatefulWidget {
   final SetViewAction action;
   final ValueChanged<SetViewAction> onSave;
+  
   const ViewEditor({super.key, required this.action, required this.onSave});
 
   static void show(BuildContext context, SetViewAction action, ValueChanged<SetViewAction> onSave) {
@@ -45,19 +44,6 @@ class _ViewEditorState extends State<ViewEditor> {
     Navigator.pop(context);
   }
 
-  void _insertAtCursor(TextEditingController controller, String text) {
-    final selection = controller.selection;
-    final currentText = controller.text;
-    final newText = selection.baseOffset >= 0
-        ? currentText.replaceRange(selection.start, selection.end, text)
-        : currentText + text;
-    controller.value = TextEditingValue(
-        text: newText,
-        selection: TextSelection.collapsed(
-            offset: (selection.baseOffset >= 0 ? selection.start : currentText.length) + text.length),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
       return EditorSheetScaffold(
@@ -71,9 +57,9 @@ class _ViewEditorState extends State<ViewEditor> {
                       hint: "Markdown or plain text. Use variables like \$res.status.",
                       child: EditorTextField(
                           controller: _ctl,
-                          maxLines: 15,
+                          lines: 10,
                           hintText: "# Dashboard\nStatus: \$res.status",
-                          enableDslInput: true,
+                          enableExpressionInput: true,
                       ),
                   ),
               ],
@@ -81,4 +67,3 @@ class _ViewEditorState extends State<ViewEditor> {
       );
   }
 }
-

@@ -1,5 +1,8 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
+
+String _newId() => "${DateTime.now().millisecondsSinceEpoch}-${Random().nextInt(999999)}";
 
 // Must sync with android/app/src/main/kotlin/com/shortcuts/shortcuts/data/WidgetDefinition.kt (IconEnum)
 class IconMap {
@@ -16,6 +19,7 @@ class IconMap {
 
 abstract class Action {
   String get type;
+  String get id;
   Map<String, dynamic> toJson();
 
   static List<Action> fromJsonList(String jsonStr) {
@@ -79,6 +83,7 @@ abstract class Action {
 }
 
 class FetchAction extends Action {
+  final String id;
   final String url;
   final String method;
   final String targetVar;
@@ -86,18 +91,20 @@ class FetchAction extends Action {
   final String? body;
 
   FetchAction({
+    String? id,
     this.url = '',
     this.method = 'GET',
     this.targetVar = 'response',
     this.headers = const {},
     this.body,
-  });
+  }) : id = id ?? _newId();
 
   @override
   String get type => 'Fetch';
 
   factory FetchAction.fromJson(Map<String, dynamic> json) {
     return FetchAction(
+      id: json['id'],
       url: json['url'] ?? '',
       method: json['method'] ?? 'GET',
       targetVar: json['targetVar'] ?? 'response',
@@ -107,6 +114,7 @@ class FetchAction extends Action {
   }
 
   FetchAction copyWith({
+    String? id,
     String? url,
     String? method,
     String? targetVar,
@@ -114,6 +122,7 @@ class FetchAction extends Action {
     String? body,
   }) {
     return FetchAction(
+      id: id ?? this.id,
       url: url ?? this.url,
       method: method ?? this.method,
       targetVar: targetVar ?? this.targetVar,
@@ -125,6 +134,7 @@ class FetchAction extends Action {
   @override
   Map<String, dynamic> toJson() => {
         'type': type,
+        'id': id,
         'url': url,
         'method': method,
         'targetVar': targetVar,
@@ -134,21 +144,24 @@ class FetchAction extends Action {
 }
 
 class IfAction extends Action {
+  final String id;
   final String conditionExpression;
   final List<Action> trueFlow;
   final List<Action> falseFlow;
 
   IfAction({
+    String? id,
     this.conditionExpression = '',
     this.trueFlow = const [],
     this.falseFlow = const [],
-  });
+  }) : id = id ?? _newId();
 
   @override
   String get type => 'If';
 
   factory IfAction.fromJson(Map<String, dynamic> json) {
     return IfAction(
+      id: json['id'],
       conditionExpression: json['conditionExpression'] ?? '',
       trueFlow: (json['trueFlow'] as List?)?.map((e) => Action.fromJson(e)).toList() ?? [],
       falseFlow: (json['falseFlow'] as List?)?.map((e) => Action.fromJson(e)).toList() ?? [],
@@ -156,11 +169,13 @@ class IfAction extends Action {
   }
 
   IfAction copyWith({
+    String? id,
     String? conditionExpression,
     List<Action>? trueFlow,
     List<Action>? falseFlow,
   }) {
     return IfAction(
+      id: id ?? this.id,
       conditionExpression: conditionExpression ?? this.conditionExpression,
       trueFlow: trueFlow ?? this.trueFlow,
       falseFlow: falseFlow ?? this.falseFlow,
@@ -170,6 +185,7 @@ class IfAction extends Action {
   @override
   Map<String, dynamic> toJson() => {
         'type': type,
+        'id': id,
         'conditionExpression': conditionExpression,
         'trueFlow': trueFlow.map((e) => e.toJson()).toList(),
         'falseFlow': falseFlow.map((e) => e.toJson()).toList(),
@@ -177,53 +193,74 @@ class IfAction extends Action {
 }
 
 class SetViewAction extends Action {
+  final String id;
   final String textTemplate;
 
-  SetViewAction({this.textTemplate = ''});
+  SetViewAction({
+    String? id,
+    this.textTemplate = ''
+  }) : id = id ?? _newId();
 
   @override
   String get type => 'SetView';
 
   factory SetViewAction.fromJson(Map<String, dynamic> json) {
-    return SetViewAction(textTemplate: json['textTemplate'] ?? '');
+    return SetViewAction(
+      id: json['id'],
+      textTemplate: json['textTemplate'] ?? ''
+    );
   }
 
   @override
   Map<String, dynamic> toJson() => {
         'type': type,
+        'id': id,
         'textTemplate': textTemplate,
       };
 }
 
 class ToastAction extends Action {
+  final String id;
   final String messageTemplate;
 
-  ToastAction({this.messageTemplate = ''});
+  ToastAction({
+    String? id,
+    this.messageTemplate = ''
+  }) : id = id ?? _newId();
 
   @override
   String get type => 'Toast';
 
   factory ToastAction.fromJson(Map<String, dynamic> json) {
-    return ToastAction(messageTemplate: json['messageTemplate'] ?? '');
+    return ToastAction(
+      id: json['id'],
+      messageTemplate: json['messageTemplate'] ?? ''
+    );
   }
 
   @override
   Map<String, dynamic> toJson() => {
         'type': type,
+        'id': id,
         'messageTemplate': messageTemplate,
       };
 }
 
 class ReturnAction extends Action {
+  final String id;
   final bool stop;
 
-  ReturnAction({this.stop = true});
+  ReturnAction({
+    String? id,
+    this.stop = true
+  }) : id = id ?? _newId();
 
   @override
   String get type => 'Return';
 
   factory ReturnAction.fromJson(Map<String, dynamic> json) {
     return ReturnAction(
+        id: json['id'],
         stop: json['stop'] ?? true, // Default to true if missing
     );
   }
@@ -231,26 +268,30 @@ class ReturnAction extends Action {
   @override
   Map<String, dynamic> toJson() => {
         'type': type,
+        'id': id,
         'stop': stop,
       };
 }
 
 class ClipboardAction extends Action {
+  final String id;
   final String mode; // 'READ' or 'WRITE'
   final String targetVar; // Used for READ
   final String textTemplate; // Used for WRITE
 
   ClipboardAction({
+    String? id,
     this.mode = 'READ',
     this.targetVar = 'clip',
     this.textTemplate = '',
-  });
+  }) : id = id ?? _newId();
 
   @override
   String get type => 'Clipboard';
 
   factory ClipboardAction.fromJson(Map<String, dynamic> json) {
     return ClipboardAction(
+      id: json['id'],
       mode: json['mode'] ?? 'READ',
       targetVar: json['targetVar'] ?? 'clip',
       textTemplate: json['textTemplate'] ?? '',
@@ -258,11 +299,13 @@ class ClipboardAction extends Action {
   }
 
   ClipboardAction copyWith({
+    String? id,
     String? mode,
     String? targetVar,
     String? textTemplate,
   }) {
     return ClipboardAction(
+      id: id ?? this.id,
       mode: mode ?? this.mode,
       targetVar: targetVar ?? this.targetVar,
       textTemplate: textTemplate ?? this.textTemplate,
@@ -272,6 +315,7 @@ class ClipboardAction extends Action {
   @override
   Map<String, dynamic> toJson() => {
         'type': type,
+        'id': id,
         'mode': mode,
         'targetVar': targetVar,
         'textTemplate': textTemplate,
@@ -279,6 +323,7 @@ class ClipboardAction extends Action {
 }
 
 class IntentAction extends Action {
+  final String id;
   final String action;
   final String packageName;
   final String? className;
@@ -286,18 +331,20 @@ class IntentAction extends Action {
   final Map<String, String> extras;
 
   IntentAction({
+    String? id,
     this.action = 'android.intent.action.VIEW',
     this.packageName = '',
     this.className,
     this.dataUri = '',
     this.extras = const {},
-  });
+  }) : id = id ?? _newId();
 
   @override
   String get type => 'Intent';
 
   factory IntentAction.fromJson(Map<String, dynamic> json) {
     return IntentAction(
+      id: json['id'],
       action: json['action'] ?? 'android.intent.action.VIEW',
       packageName: json['packageName'] ?? '',
       className: json['className'],
@@ -307,6 +354,7 @@ class IntentAction extends Action {
   }
 
   IntentAction copyWith({
+    String? id,
     String? action,
     String? packageName,
     String? className,
@@ -314,6 +362,7 @@ class IntentAction extends Action {
     Map<String, String>? extras,
   }) {
     return IntentAction(
+      id: id ?? this.id,
       action: action ?? this.action,
       packageName: packageName ?? this.packageName,
       className: className ?? this.className,
@@ -325,6 +374,7 @@ class IntentAction extends Action {
   @override
   Map<String, dynamic> toJson() => {
         'type': type,
+        'id': id,
         'action': action,
         'packageName': packageName,
         'className': className,
@@ -334,21 +384,24 @@ class IntentAction extends Action {
 }
 
 class NotificationAction extends Action {
+  final String id;
   final String title;
   final String message;
   final String channelId;
 
   NotificationAction({
+    String? id,
     this.title = '',
     this.message = '',
     this.channelId = 'shortcuts',
-  });
+  }) : id = id ?? _newId();
 
   @override
   String get type => 'Notification';
 
   factory NotificationAction.fromJson(Map<String, dynamic> json) {
     return NotificationAction(
+      id: json['id'],
       title: json['title'] ?? '',
       message: json['message'] ?? '',
       channelId: json['channelId'] ?? 'shortcuts',
@@ -356,11 +409,13 @@ class NotificationAction extends Action {
   }
 
   NotificationAction copyWith({
+    String? id,
     String? title,
     String? message,
     String? channelId,
   }) {
     return NotificationAction(
+      id: id ?? this.id,
       title: title ?? this.title,
       message: message ?? this.message,
       channelId: channelId ?? this.channelId,
@@ -370,6 +425,7 @@ class NotificationAction extends Action {
   @override
   Map<String, dynamic> toJson() => {
         'type': type,
+        'id': id,
         'title': title,
         'message': message,
         'channelId': channelId,
@@ -377,24 +433,35 @@ class NotificationAction extends Action {
 }
 
 class ExpressionAction extends Action {
+  final String id;
   final String script;
 
-  ExpressionAction({this.script = ''});
+  ExpressionAction({
+    String? id,
+    this.script = ''
+  }) : id = id ?? _newId();
 
   @override
   String get type => 'Expression';
 
   factory ExpressionAction.fromJson(Map<String, dynamic> json) {
-    return ExpressionAction(script: json['script'] ?? '');
+    return ExpressionAction(
+      id: json['id'],
+      script: json['script'] ?? ''
+    );
   }
 
-  ExpressionAction copyWith({String? script}) {
-    return ExpressionAction(script: script ?? this.script);
+  ExpressionAction copyWith({String? id, String? script}) {
+    return ExpressionAction(
+      id: id ?? this.id,
+      script: script ?? this.script
+    );
   }
 
   @override
   Map<String, dynamic> toJson() => {
         'type': type,
+        'id': id,
         'script': script,
       };
 }

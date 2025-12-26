@@ -355,9 +355,9 @@ class _ActionTileState extends State<ActionTile> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                       Text("Tap to add action", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textHeader)),
+                                       Text('Tap to add action', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textHeader)),
                                        SizedBox(height: 4),
-                                       Text("点击添加动作", style: TextStyle(fontSize: 11, color: AppColors.textBody)),
+                                       Text('No actions in this branch', style: TextStyle(fontSize: 11, color: AppColors.textBody)),
                                     ],
                                   ),
                                ),

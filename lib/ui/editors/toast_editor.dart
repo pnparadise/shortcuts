@@ -5,11 +5,10 @@ import '../widgets/editor/editor_input.dart';
 import '../widgets/editor/editor_scaffold.dart';
 import '../widgets/editor/editor_section.dart';
 
-
-
 class ToastEditor extends StatefulWidget {
   final ToastAction action;
   final ValueChanged<ToastAction> onSave;
+  
   const ToastEditor({super.key, required this.action, required this.onSave});
 
   static void show(BuildContext context, ToastAction action, ValueChanged<ToastAction> onSave) {
@@ -45,19 +44,6 @@ class _ToastEditorState extends State<ToastEditor> {
     Navigator.pop(context);
   }
 
-  void _insertAtCursor(TextEditingController controller, String text) {
-    final selection = controller.selection;
-    final currentText = controller.text;
-    final newText = selection.baseOffset >= 0
-        ? currentText.replaceRange(selection.start, selection.end, text)
-        : currentText + text;
-    controller.value = TextEditingValue(
-        text: newText,
-        selection: TextSelection.collapsed(
-            offset: (selection.baseOffset >= 0 ? selection.start : currentText.length) + text.length),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
       return EditorSheetScaffold(
@@ -71,9 +57,9 @@ class _ToastEditorState extends State<ToastEditor> {
                       hint: "Supports variables like \$res.data.message.",
                       child: EditorTextField(
                           controller: _ctl,
-                          maxLines: 4,
+                          lines: 4,
                           hintText: "Operation successful!",
-                          enableDslInput: true,
+                          enableExpressionInput: true,
                       ),
                   ),
               ],
@@ -81,4 +67,3 @@ class _ToastEditorState extends State<ToastEditor> {
       );
   }
 }
-

@@ -1,9 +1,7 @@
 package com.shortcuts.shortcuts.engine
 
 import android.content.Context
-import android.os.Handler
-import android.os.Looper
-import android.widget.Toast
+import com.shortcuts.shortcuts.data.LogRepository
 import com.shortcuts.shortcuts.dsl.Action
 import com.shortcuts.shortcuts.utils.GsonHelper
 import okhttp3.OkHttpClient
@@ -12,15 +10,31 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import java.io.IOException
 
-class LogicEngine(private val androidContext: Context) {
+class LogicEngine(
+    private val androidContext: Context, 
+    private val logRepository: LogRepository? = null,
+    private val logicId: Int = -1,
+    private val widgetId: Int = -1
+) {
 
     private val client = OkHttpClient()
 
+    private fun log(actionId: String, message: String, level: String = "INFO", details: String? = null) {
+        android.util.Log.d("LowCode", "[$level] $message (LogicID: $logicId, WidgetID: $widgetId, ActionID: $actionId)")
+        try {
+            logRepository?.addLog(logicId, widgetId, actionId, level, message, details)
+        } catch (e: Exception) {
+            android.util.Log.e("LowCode", "Failed to write log to DB", e)
+        }
+    }
 
     suspend fun executeFlow(actions: List<Action>, contextManager: ContextManager): Boolean {
         android.util.Log.d("LowCode", "LogicEngine: executeFlow with ${actions.size} actions. Actions: $actions")
         for ((index, action) in actions.withIndex()) {
             android.util.Log.d("LowCode", "LogicEngine: Processing action #$index type=${action::class.java.simpleName}")
+            // Log start of action
+            log(action.id, "Started execution of ${action.type}", "INFO")
+            
             try {
                 val shouldStop = when (action) {
                     is Action.Fetch -> { executeFetch(action, contextManager); false }
@@ -34,18 +48,23 @@ class LogicEngine(private val androidContext: Context) {
                     is Action.Expression -> { executeExpression(action, contextManager); false }
                 }
                 
+                log(action.id, "Completed successfully", "INFO")
+                
                 if (shouldStop) {
                     android.util.Log.d("LowCode", "LogicEngine: Flow stopped by Return action at index $index")
+                    log(action.id, "Flow stopped by Return action", "INFO")
                     return true
                 }
             } catch (e: Exception) {
                  android.util.Log.e("LowCode", "LogicEngine: Error executing action #$index", e)
+                 log(action.id, "Execution Failed: ${e.message}", "ERROR", e.stackTraceToString())
             }
         }
         return false
     }
 
     private fun executeFetch(action: Action.Fetch, cm: ContextManager) {
+        log(action.id, "Fetching URL: ${action.url} [${action.method}]")
         try {
             val url = cm.interpolate(action.url)
             val builder = Request.Builder().url(url)
@@ -84,27 +103,29 @@ class LogicEngine(private val androidContext: Context) {
                 
                 // Write to Context
                 cm.context[action.targetVar] = resultObj
+                log(action.id, "Response Code: $code", "INFO", "Body preview: ${bodyStr.take(200)}...")
             }
         } catch (e: Exception) {
-            e.printStackTrace()
             // Write error to context with consistent structure
             cm.context[action.targetVar] = mapOf(
                 "status" to -1,
                 "data" to mapOf("error" to (e.message ?: "Unknown Error")),
                 "message" to (e.toString())
             )
-
+            throw e // Re-throw to be caught by executeFlow and logged properly
         }
     }
 
     private suspend fun executeIf(action: Action.If, cm: ContextManager): Boolean {
         val rawExpression = action.conditionExpression
+        log(action.id, "Evaluating condition: $rawExpression")
         android.util.Log.d("LowCode", "LogicEngine: IF expression='$rawExpression'")
 
         // Use ExpressionEngine for evaluation
         val result = ExpressionEngine.evaluate(rawExpression, cm)
         val isTrue = ExpressionEngine.isTruthy(result)
-
+        
+        log(action.id, "Condition result: $isTrue", "INFO", "Value: $result")
         android.util.Log.d("LowCode", "LogicEngine: IF result=$isTrue (value=$result)")
 
         return if (isTrue) {
@@ -122,6 +143,7 @@ class LogicEngine(private val androidContext: Context) {
         // ContextManager is shared. We can just write to it. 
         // Provider will check this key after execution.
         cm.context["_view_text"] = text
+        log(action.id, "Set view text: $text")
     }
 
     private suspend fun executeToast(action: Action.Toast, cm: ContextManager) {
@@ -137,8 +159,10 @@ class LogicEngine(private val androidContext: Context) {
                 }
                 androidContext.startActivity(intent)
                 android.util.Log.d("LowCode", "LogicEngine: Started ToastActivity")
+                log(action.id, "Showed Toast: $msg")
             } catch (e: Exception) {
                 android.util.Log.e("LowCode", "LogicEngine: Failed to start ToastActivity", e)
+                throw e
             }
         }
     }
@@ -151,12 +175,14 @@ class LogicEngine(private val androidContext: Context) {
             val clip = android.content.ClipData.newPlainText("LowCode", text)
             clipboard.setPrimaryClip(clip)
             android.util.Log.d("LowCode", "LogicEngine: Clipboard Write: $text")
+            log(action.id, "Copied to clipboard: $text")
         } else {
             // READ
             val item = clipboard.primaryClip?.getItemAt(0)
             val text = item?.text?.toString() ?: ""
             cm.context[action.targetVar] = text
             android.util.Log.d("LowCode", "LogicEngine: Clipboard Read: $text -> ${action.targetVar}")
+            log(action.id, "Read from clipboard to \$${action.targetVar}", "INFO", text)
         }
     }
 
@@ -193,9 +219,11 @@ class LogicEngine(private val androidContext: Context) {
             
             androidContext.startActivity(intent)
             android.util.Log.d("LowCode", "LogicEngine: Started Intent: ${action.packageName}/${intent.action} data=${intent.data}")
+            log(action.id, "Launched Intent: ${intent.action}", "INFO", "Pkg: ${action.packageName}, Data: ${intent.data}")
         } catch (e: Exception) {
             android.util.Log.e("LowCode", "LogicEngine: Failed to start Intent", e)
              cm.context["_error"] = e.toString()
+             throw e
         }
     }
 
@@ -228,14 +256,17 @@ class LogicEngine(private val androidContext: Context) {
             notificationManager.notify(notificationId, notification)
             
             android.util.Log.d("LowCode", "LogicEngine: Posted notification: $title - $message")
+            log(action.id, "Posted Notification", "INFO", "Title: $title, Msg: $message")
         } catch (e: Exception) {
             android.util.Log.e("LowCode", "LogicEngine: Failed to post notification", e)
             cm.context["_error"] = e.toString()
+            throw e
         }
     }
 
     private fun executeExpression(action: Action.Expression, cm: ContextManager) {
         android.util.Log.d("LowCode", "LogicEngine: Executing Expression script")
+        log(action.id, "Executing script", "INFO", action.script)
         
         // Parse multi-line script, each line is an assignment: target = expression
         action.script.split("\n").forEach { line ->
@@ -246,13 +277,22 @@ class LogicEngine(private val androidContext: Context) {
             
             if (trimmedLine.contains("=")) {
                 val parts = trimmedLine.split("=", limit = 2)
-                val target = parts[0].trim().removePrefix("\$") // Remove $ if present
+                val rawTarget = parts[0].trim()
+                
+                // Strict Check: Variable declaration MUST start with $
+                if (!rawTarget.startsWith("$")) {
+                    android.util.Log.w("LowCode", "LogicEngine: Invalid variable assignment '$rawTarget'. Must start with '$'.")
+                    return@forEach
+                }
+
+                val target = rawTarget.removePrefix("$")
                 val expr = parts[1].trim()
                 
                 // Evaluate expression and store in context
                 val result = ExpressionEngine.evaluate(expr, cm)
                 cm.context[target] = result
                 android.util.Log.d("LowCode", "LogicEngine: Expression assigned $target = $result")
+                // log(action.id, "Assigned \$$target = $result") // Optional: might be too verbose
             }
         }
     }

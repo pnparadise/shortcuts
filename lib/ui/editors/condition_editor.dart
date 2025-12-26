@@ -4,12 +4,12 @@ import '../theme/theme.dart';
 import '../widgets/editor/editor_input.dart';
 import '../widgets/editor/editor_scaffold.dart';
 import '../widgets/editor/editor_section.dart';
-
-
+import '../screens/dsl_wiki_screen.dart';
 
 class ConditionEditor extends StatefulWidget {
   final IfAction action;
   final ValueChanged<IfAction> onSave;
+  
   const ConditionEditor({super.key, required this.action, required this.onSave});
   
   static void show(BuildContext context, IfAction action, ValueChanged<IfAction> onSave) {
@@ -49,19 +49,6 @@ class _ConditionEditorState extends State<ConditionEditor> {
     Navigator.pop(context);
   }
 
-  void _insertAtCursor(TextEditingController controller, String text) {
-    final selection = controller.selection;
-    final currentText = controller.text;
-    final newText = selection.baseOffset >= 0
-        ? currentText.replaceRange(selection.start, selection.end, text)
-        : currentText + text;
-    controller.value = TextEditingValue(
-        text: newText,
-        selection: TextSelection.collapsed(
-            offset: (selection.baseOffset >= 0 ? selection.start : currentText.length) + text.length),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
       return EditorSheetScaffold(
@@ -76,7 +63,17 @@ class _ConditionEditorState extends State<ConditionEditor> {
                       child: EditorTextField(
                           controller: _ctl,
                           hintText: "\$res.status == 200",
-                          enableDslInput: true,
+                          enableExpressionInput: true,
+                      ),
+                  ),
+                  const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                      onPressed: () => DslWikiScreen.show(context),
+                      icon: const Icon(Icons.help_outline, size: 18),
+                      label: const Text('DSL syntax reference'),
+                      style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.textBody,
+                          side: const BorderSide(color: AppColors.border),
                       ),
                   ),
               ],
@@ -84,4 +81,3 @@ class _ConditionEditorState extends State<ConditionEditor> {
       );
   }
 }
-

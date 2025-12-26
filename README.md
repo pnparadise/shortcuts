@@ -13,6 +13,12 @@ A powerful Flutter-based application for creating, managing, and executing dynam
 - **Native Android Widgets**: Pin your shortcuts to the home screen as fully functional Android Widgets.
 - **Smart Logic Engine**: Native Kotlin engine (`LogicEngine`) executes flows efficiently in the background.
 
+## Design Language
+
+- Blue-toned palette with a clean, borderless UI.
+- Prefer edge-to-edge list items without card borders; use spacing and subtle fills for separation.
+- Use light blue-white backgrounds for code/detail blocks.
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.

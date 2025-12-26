@@ -19,7 +19,7 @@ class AppPicker extends StatefulWidget {
 }
 
 class _AppPickerState extends State<AppPicker> {
-  static const platform = MethodChannel('com.example.lowcode/widget');
+  static const platform = MethodChannel('com.shortcuts.shortcuts/widget');
   
   List<Map<String, dynamic>> _apps = [];
   List<Map<String, dynamic>> _filteredApps = [];

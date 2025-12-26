@@ -38,7 +38,7 @@ class _FetchEditorSheetState extends State<FetchEditorSheet> with SingleTickerPr
   Map<String, dynamic>? _testResultData;
   String _testError = "";
 
-  static const platform = MethodChannel('com.example.lowcode/widget');
+  static const platform = MethodChannel('com.shortcuts.shortcuts/widget');
 
   static const List<String> _commonHeaders = [
     "Content-Type", "Accept", "Authorization", "User-Agent", "Cache-Control", 
@@ -232,7 +232,8 @@ class _FetchEditorSheetState extends State<FetchEditorSheet> with SingleTickerPr
 
   Widget _buildGeneralTab() {
       return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           children: [
               Row(
                 children: [
@@ -269,7 +270,7 @@ class _FetchEditorSheetState extends State<FetchEditorSheet> with SingleTickerPr
                   child: EditorTextField(
                     controller: _urlCtl,
                     hintText: "https://api.example.com",
-                    maxLines: null, // Allow wrapping but looks like input
+                    lines: 2, // Allow wrapping but looks like input
                   ),
               ),
               EditorSection(
@@ -292,7 +293,8 @@ class _FetchEditorSheetState extends State<FetchEditorSheet> with SingleTickerPr
 
   Widget _buildHeadersTab() {
       return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           children: [
               EditorSection(
                   title: "Request Headers",
@@ -353,7 +355,8 @@ class _FetchEditorSheetState extends State<FetchEditorSheet> with SingleTickerPr
 
   Widget _buildBodyTab() {
       return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           children: [
              EditorSection(
                  title: "Body Type",
@@ -386,16 +389,16 @@ class _FetchEditorSheetState extends State<FetchEditorSheet> with SingleTickerPr
                     ),
                  ),
              ),
-             const SizedBox(height: 16),
+             const SizedBox(height: 8),
              if (_bodyType == BodyType.json)
                 EditorSection(
                     title: "JSON Content",
                     compact: true,
                     child: EditorTextField(
                         controller: _jsonBodyCtl,
-                        maxLines: 15, // TextArea mode
+                        lines: 10, // TextArea mode
                         hintText: "{\n  \"key\": \"value\"\n}",
-                        enableDslInput: true,
+                        enableExpressionInput: true,
                     ),
                 )
              else if (_bodyType == BodyType.formData)
@@ -421,38 +424,63 @@ class _FetchEditorSheetState extends State<FetchEditorSheet> with SingleTickerPr
   }
 
   Widget _buildTestTab() {
-      // ... No text fields in test tab, just viewer ...
-      // Keeping existing code for that part
       return Column(
           children: [
               Padding(
-                padding: const EdgeInsets.all(16),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                      icon: _testing 
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
-                          : const Icon(Icons.play_arrow),
-                      label: Text(_testing ? "Sending Request..." : "Run Test"),
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      onPressed: _testing ? null : _runTest,
-                  ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    OutlinedButton.icon(
+                        icon: _testing 
+                            ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)) 
+                            : const Icon(Icons.play_arrow, size: 18),
+                        label: Text(_testing ? "Testing..." : "Run Test", style: const TextStyle(fontSize: 13)),
+                        style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.primary,
+                            side: const BorderSide(color: AppColors.primary),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        ),
+                        onPressed: _testing ? null : _runTest,
+                    ),
+                    const Spacer(),
+                    if (_testResultData != null) ...[
+                      _buildStatusBadge(),
+                    ],
+                  ],
                 ),
               ),
-              const Divider(height: 1),
               Expanded(
                   child: _buildTestResult(),
               ),
           ],
       );
   }
+
+  Widget _buildStatusBadge() {
+    final status = _testResultData?['status'] as int? ?? 0;
+    Color statusColor = Colors.grey;
+    if (status >= 200 && status < 300) {
+      statusColor = Colors.green;
+    } else if (status >= 400 && status < 500) {
+      statusColor = Colors.orange;
+    } else if (status >= 500) {
+      statusColor = Colors.red;
+    }
+    
+    return Container(
+       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+       decoration: BoxDecoration(
+          color: statusColor.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: statusColor),
+       ),
+       child: Text("$status", style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12)),
+    );
+  }
   
   Widget _buildTestResult() {
       if (_testing) {
-          return const Center(child: Text("Waiting for response..."));
+          return const Center(child: Text("Waiting for response...", style: TextStyle(color: AppColors.textMuted)));
       }
       if (_testError.isNotEmpty) {
           return Center(
@@ -466,69 +494,185 @@ class _FetchEditorSheetState extends State<FetchEditorSheet> with SingleTickerPr
           return const Center(child: Text("Run a test to see results.", style: TextStyle(color: AppColors.textMuted)));
       }
 
-      final status = _testResultData!['status'] as int? ?? 0;
-      final headers = _testResultData!['headers'] as Map? ?? {};
-      final data = _testResultData!['data'];
-      
-      Color statusColor = Colors.grey;
-      if (status >= 200 && status < 300) statusColor = Colors.green;
-      else if (status >= 400 && status < 500) statusColor = Colors.orange;
-      else if (status >= 500) statusColor = Colors.red;
-
-      String formattedBody = "null";
-      try {
-         formattedBody = const JsonEncoder.withIndent('  ').convert(data);
-      } catch (e) {
-         formattedBody = data.toString();
-      }
-
-      return ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-              Row(
-                 children: [
-                    Container(
-                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                       decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: statusColor),
-                       ),
-                       child: Text("Status: $status", style: TextStyle(color: statusColor, fontWeight: FontWeight.bold)),
-                    ),
-                    const Spacer(),
-                 ],
+      return LayoutBuilder(
+        builder: (context, constraints) => Container(
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          padding: const EdgeInsets.all(12),
+          constraints: BoxConstraints(minWidth: constraints.maxWidth - 32),
+          decoration: const BoxDecoration(
+              color: AppColors.inputBg,
+          ),
+          child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: IntrinsicWidth(
+                  child: _JsonNode(data: _testResultData, indent: 0),
               ),
-              const SizedBox(height: 16),
-              const Text("Response Body", style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Container(
-                 padding: const EdgeInsets.all(12),
-                 decoration: BoxDecoration(
-                    color: AppColors.codeBg,
-                    borderRadius: BorderRadius.circular(8),
-                 ),
-                 child: SelectableText(
-                    formattedBody,
-                    style: const TextStyle(color: AppColors.codeText, fontFamily: "monospace", fontSize: 12),
-                 ),
-              ),
-              const SizedBox(height: 16),
-              ExpansionTile(
-                  title: const Text("Response Headers", style: TextStyle(fontSize: 14)),
-                  tilePadding: EdgeInsets.zero,
-                  children: headers.entries.map((e) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
-                         crossAxisAlignment: CrossAxisAlignment.start,
-                         children: [
-                             Expanded(flex: 1, child: Text(e.key.toString(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
-                             Expanded(flex: 2, child: Text(e.value.toString(), style: const TextStyle(fontSize: 12))),
-                         ],
-                      ),
-                  )).toList(),
-              ),
-          ],
+          ),
+        ),
       );
   }
 }
+
+// Collapsible JSON viewer widget
+class _JsonNode extends StatefulWidget {
+  final dynamic data;
+  final int indent;
+  final String? keyName;
+
+  const _JsonNode({required this.data, this.indent = 0, this.keyName});
+
+  @override
+  State<_JsonNode> createState() => _JsonNodeState();
+}
+
+class _JsonNodeState extends State<_JsonNode> {
+  bool _expanded = true;
+
+  static const _keyStyle = TextStyle(color: Color(0xFF0066CC), fontFamily: 'monospace', fontSize: 12, fontWeight: FontWeight.w600);
+  static const _stringStyle = TextStyle(color: Color(0xFF067D17), fontFamily: 'monospace', fontSize: 12);
+  static const _numberStyle = TextStyle(color: Color(0xFF1750EB), fontFamily: 'monospace', fontSize: 12);
+  static const _boolStyle = TextStyle(color: Color(0xFF0033B3), fontFamily: 'monospace', fontSize: 12, fontWeight: FontWeight.w600);
+  static const _nullStyle = TextStyle(color: Color(0xFF808080), fontFamily: 'monospace', fontSize: 12, fontStyle: FontStyle.italic);
+  static const _braceStyle = TextStyle(color: Color(0xFF333333), fontFamily: 'monospace', fontSize: 12);
+
+  @override
+  Widget build(BuildContext context) {
+    final data = widget.data;
+
+    if (data is Map) {
+      final entries = data.entries.toList();
+      if (data.isEmpty) {
+        return _buildLine(widget.keyName, '{}');
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: _buildLine(widget.keyName, _expanded ? '{' : '{...}', suffix: !_expanded ? ' // ${data.length}' : null),
+          ),
+          if (_expanded) ...[
+            ...entries.asMap().entries.map((e) {
+              final isLast = e.key == entries.length - 1;
+              return Padding(
+                padding: const EdgeInsets.only(left: 16.0),
+                child: _JsonNodeWithComma(data: e.value.value, keyName: e.value.key.toString(), showComma: !isLast),
+              );
+            }),
+            const Text('}', style: _braceStyle),
+          ],
+        ],
+      );
+    } else if (data is List) {
+      if (data.isEmpty) {
+        return _buildLine(widget.keyName, '[]');
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: _buildLine(widget.keyName, _expanded ? '[' : '[...]', suffix: !_expanded ? ' // ${data.length}' : null),
+          ),
+          if (_expanded) ...[
+            ...data.asMap().entries.map((e) {
+              final isLast = e.key == data.length - 1;
+              return Padding(
+                padding: const EdgeInsets.only(left: 16.0),
+                child: _JsonNodeWithComma(data: e.value, showComma: !isLast),
+              );
+            }),
+            const Text(']', style: _braceStyle),
+          ],
+        ],
+      );
+    } else {
+      // Primitive value
+      String valueText;
+      TextStyle valueStyle;
+      if (data is String) {
+        valueStyle = _stringStyle;
+        valueText = '"$data"';
+      } else if (data is num) {
+        valueStyle = _numberStyle;
+        valueText = data.toString();
+      } else if (data is bool) {
+        valueStyle = _boolStyle;
+        valueText = data.toString();
+      } else {
+        valueStyle = _nullStyle;
+        valueText = 'null';
+      }
+      
+      return Row(
+        children: [
+          if (widget.keyName != null) Text('"${widget.keyName}": ', style: _keyStyle),
+          SelectableText(valueText, style: valueStyle),
+        ],
+      );
+    }
+  }
+
+  Widget _buildLine(String? key, String bracket, {String? suffix}) {
+    return Row(
+      children: [
+        if (key != null) Text('"$key": ', style: _keyStyle),
+        Text(bracket, style: _braceStyle),
+        if (suffix != null) Text(suffix, style: _nullStyle),
+      ],
+    );
+  }
+}
+
+class _JsonNodeWithComma extends StatelessWidget {
+  final dynamic data;
+  final String? keyName;
+  final bool showComma;
+
+  const _JsonNodeWithComma({required this.data, this.keyName, this.showComma = false});
+
+  @override
+  Widget build(BuildContext context) {
+    // For objects/arrays, comma goes after the closing bracket - handled by parent
+    // For primitives, add comma inline
+    if (data is Map || data is List) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _JsonNode(data: data, keyName: keyName),
+          if (showComma) ...[],  // Comma will be on the closing bracket line
+        ],
+      );
+    }
+    
+    // Primitive - add comma inline
+    String valueText;
+    TextStyle valueStyle;
+    if (data is String) {
+      valueStyle = const TextStyle(color: Color(0xFF067D17), fontFamily: 'monospace', fontSize: 12);
+      valueText = '"$data"';
+    } else if (data is num) {
+      valueStyle = const TextStyle(color: Color(0xFF1750EB), fontFamily: 'monospace', fontSize: 12);
+      valueText = data.toString();
+    } else if (data is bool) {
+      valueStyle = const TextStyle(color: Color(0xFF0033B3), fontFamily: 'monospace', fontSize: 12, fontWeight: FontWeight.w600);
+      valueText = data.toString();
+    } else {
+      valueStyle = const TextStyle(color: Color(0xFF808080), fontFamily: 'monospace', fontSize: 12, fontStyle: FontStyle.italic);
+      valueText = 'null';
+    }
+    
+    const keyStyle = TextStyle(color: Color(0xFF0066CC), fontFamily: 'monospace', fontSize: 12, fontWeight: FontWeight.w600);
+    const braceStyle = TextStyle(color: Color(0xFF333333), fontFamily: 'monospace', fontSize: 12);
+    
+    return Row(
+      children: [
+        if (keyName != null) Text('"$keyName": ', style: keyStyle),
+        SelectableText(valueText, style: valueStyle),
+        if (showComma) const Text(',', style: braceStyle),
+      ],
+    );
+  }
+}
+
+

@@ -17,72 +17,75 @@ class DslWikiScreen extends StatelessWidget {
       backgroundColor: AppColors.scaffoldBg,
       appBar: AppBar(
         backgroundColor: AppColors.cardBg,
-        title: const Text("DSL 2.0 语法参考", style: AppStyles.headerStyle),
+        elevation: 0,
+        centerTitle: false,
+        title: const Text('DSL 2.0 Syntax Reference', style: AppStyles.headerStyle),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.textHeader),
           onPressed: () => Navigator.pop(context),
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         children: [
-          _buildSection("变量语法", [
-            _SyntaxItem("\$var", "简单变量引用", "\$url, \$id"),
-            _SyntaxItem("\$obj.prop", "嵌套属性访问", "\$res.data.name"),
-            _SyntaxItem("\"text \$var\"", "字符串内插值", "\"id=\$id\""),
+          _buildSection('Variable syntax', [
+            _SyntaxItem("\$var", 'Simple variable reference', "\$url, \$id"),
+            _SyntaxItem("\$obj.prop", 'Nested property access', "\$res.data.name"),
+            _SyntaxItem("\"text \$var\"", 'String interpolation', "\"id=\$id\""),
           ]),
-          _buildSection("字面量", [
-            _SyntaxItem("true / false", "布尔值", ""),
-            _SyntaxItem("null", "空值", ""),
-            _SyntaxItem("123.4", "数字", ""),
-            _SyntaxItem("\"text\"", "字符串", "\"hello world\""),
+          _buildSection('Literals', [
+            _SyntaxItem("true / false", 'Boolean', ''),
+            _SyntaxItem('null', 'Null', ''),
+            _SyntaxItem('123.4', 'Number', ''),
+            _SyntaxItem("\"text\"", 'String', "\"hello world\""),
           ]),
-          _buildSection("逻辑运算符", [
-            _SyntaxItem("?:", "Elvis (空值回退)", "\$url ?: \"default\""),
-            _SyntaxItem("||", "逻辑或", "\$a || \$b"),
-            _SyntaxItem("&&", "逻辑与", "\$a && \$b"),
-            _SyntaxItem("!", "取反", "! \$error"),
+          _buildSection('Logical operators', [
+            _SyntaxItem("?:", 'Elvis (null fallback)', "\$url ?: \"default\""),
+            _SyntaxItem("||", 'Logical OR', "\$a || \$b"),
+            _SyntaxItem("&&", 'Logical AND', "\$a && \$b"),
+            _SyntaxItem("!", 'Not', "! \$error"),
           ]),
-          _buildSection("比较运算符", [
-            _SyntaxItem("==", "等于", "\$status == 200"),
-            _SyntaxItem("!=", "不等于", "\$type != \"error\""),
-            _SyntaxItem("> / <", "大于 / 小于", "\$count > 0"),
-            _SyntaxItem(">= / <=", "大于等于 / 小于等于", "\$age >= 18"),
+          _buildSection('Comparison operators', [
+            _SyntaxItem("==", 'Equals', "\$status == 200"),
+            _SyntaxItem("!=", 'Not equals', "\$type != \"error\""),
+            _SyntaxItem("> / <", 'Greater / less than', "\$count > 0"),
+            _SyntaxItem(">= / <=", 'Greater or equal / less or equal', "\$age >= 18"),
           ]),
-          _buildSection("字符串运算符", [
-            _SyntaxItem("CONTAINS", "包含", "\$url CONTAINS \"taobao\""),
-            _SyntaxItem("STARTS_WITH", "以...开头", "\$name STARTS_WITH \"张\""),
-            _SyntaxItem("ENDS_WITH", "以...结尾", "\$file ENDS_WITH \".jpg\""),
-            _SyntaxItem("+", "拼接", "\$a + \$b 或隐式拼接 \$a \$b"),
+          _buildSection('String operators', [
+            _SyntaxItem("CONTAINS", 'Contains', "\$url CONTAINS \"taobao\""),
+            _SyntaxItem("STARTS_WITH", 'Starts with', "\$name STARTS_WITH \"A\""),
+            _SyntaxItem("ENDS_WITH", 'Ends with', "\$file ENDS_WITH \".jpg\""),
+            _SyntaxItem("+", 'Concatenate', "\$a + \$b or implicit concat \$a \$b"),
           ]),
-          _buildSection("算术运算符", [
-            _SyntaxItem("+", "加法", "\$a + \$b"),
-            _SyntaxItem("-", "减法", "\$a - \$b"),
-            _SyntaxItem("*", "乘法", "\$a * \$b"),
-            _SyntaxItem("/", "除法", "\$a / \$b"),
+          _buildSection('Arithmetic operators', [
+            _SyntaxItem("+", 'Addition', "\$a + \$b"),
+            _SyntaxItem("-", 'Subtraction', "\$a - \$b"),
+            _SyntaxItem("*", 'Multiplication', "\$a * \$b"),
+            _SyntaxItem("/", 'Division', "\$a / \$b"),
           ]),
-          _buildSection("URL 函数", [
-            _SyntaxItem("GET_HOST", "获取域名", "GET_HOST \$url"),
-            _SyntaxItem("GET_PATH", "获取路径", "GET_PATH \$url"),
-            _SyntaxItem("GET_PARAM", "获取参数", "GET_PARAM \$url \"id\""),
+          _buildSection('URL functions', [
+            _SyntaxItem("GET_HOST", 'Get host', "GET_HOST \$url"),
+            _SyntaxItem("GET_PATH", 'Get path', "GET_PATH \$url"),
+            _SyntaxItem("GET_PARAM", 'Get param', "GET_PARAM \$url \"id\""),
           ]),
-          _buildSection("字符串函数", [
-            _SyntaxItem("UPPER", "转大写", "UPPER \$text"),
-            _SyntaxItem("LOWER", "转小写", "LOWER \$text"),
-            _SyntaxItem("TRIM", "去空格", "TRIM \$text"),
-            _SyntaxItem("LENGTH", "获取长度", "LENGTH \$text"),
-            _SyntaxItem("REPLACE", "替换", "REPLACE \$text \"old\" \"new\""),
-            _SyntaxItem("SUBSTRING", "截取", "SUBSTRING \$text 0 5"),
+          _buildSection('String functions', [
+            _SyntaxItem("UPPER", 'Uppercase', "UPPER \$text"),
+            _SyntaxItem("LOWER", 'Lowercase', "LOWER \$text"),
+            _SyntaxItem("TRIM", 'Trim', "TRIM \$text"),
+            _SyntaxItem("LENGTH", 'Length', "LENGTH \$text"),
+            _SyntaxItem("REPLACE", 'Replace', "REPLACE \$text \"old\" \"new\""),
+            _SyntaxItem("SUBSTRING", 'Substring', "SUBSTRING \$text 0 5"),
+            _SyntaxItem("EXTRACT", 'Extract key-value to JSON', "EXTRACT \$str \";\" \"=\""),
           ]),
-          _buildSection("Expression 组件示例", [
-            _SyntaxItem("赋值", "将表达式结果存入变量", "id = GET_PARAM \$url \"id\""),
-            _SyntaxItem("拼接", "构建新字符串", "link = \"https://tb.cn/\" \$id"),
-            _SyntaxItem("计算", "数值运算", "total = \$price * \$count"),
+          _buildSection('Expression examples', [
+            _SyntaxItem('Assignment', 'Assign expression result to a variable', "\$id = GET_PARAM \$url \"id\""),
+            _SyntaxItem('Concatenate', 'Build a new string', "\$link = \"https://tb.cn/\" \$id"),
+            _SyntaxItem('Calculation', 'Numeric calculation', "\$total = \$price * \$count"),
           ]),
-          _buildSection("If 条件示例", [
-            _SyntaxItem("状态判断", "", "\$res.status == 200"),
-            _SyntaxItem("多条件", "", "\$url CONTAINS \"taobao\" || \$url CONTAINS \"tmall\""),
-            _SyntaxItem("空值检查", "", "\$data && ! \$error"),
+          _buildSection('If condition examples', [
+            _SyntaxItem('Status check', 'Check a success status', "\$res.status == 200"),
+            _SyntaxItem('Multiple conditions', 'Combine with OR', "\$url CONTAINS \"taobao\" || \$url CONTAINS \"tmall\""),
+            _SyntaxItem('Null check', 'Guard against empty values', "\$data && ! \$error"),
           ]),
           const SizedBox(height: 40),
         ],
@@ -91,73 +94,91 @@ class DslWikiScreen extends StatelessWidget {
   }
 
   Widget _buildSection(String title, List<_SyntaxItem> items) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Text(title, style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: AppColors.primary,
-          )),
-        ),
-        Container(
-          decoration: BoxDecoration(
-            color: AppColors.cardBg,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.border),
+    final rows = <Widget>[];
+    for (var i = 0; i < items.length; i++) {
+      rows.add(_buildSyntaxRow(items[i]));
+      if (i != items.length - 1) {
+        rows.add(const SizedBox(height: 10));
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 4,
+                height: 16,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
           ),
-          child: Column(
-            children: items.asMap().entries.map((e) {
-              final isLast = e.key == items.length - 1;
-              return _buildSyntaxRow(e.value, isLast);
-            }).toList(),
-          ),
-        ),
-        const SizedBox(height: 8),
-      ],
+          const SizedBox(height: 12),
+          Column(children: rows),
+        ],
+      ),
     );
   }
 
-  Widget _buildSyntaxRow(_SyntaxItem item, bool isLast) {
+  Widget _buildSyntaxRow(_SyntaxItem item) {
     return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        border: isLast ? null : const Border(bottom: BorderSide(color: AppColors.border)),
-      ),
+      color: const Color(0xFFF5F9FF),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              item.syntax,
-              style: const TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Colors.teal,
+          Container(
+            width: 112,
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+            color: const Color(0xFFE2EEFF),
+            child: Center(
+              child: Text(
+                item.syntax,
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textMuted,
+                ),
               ),
             ),
           ),
+          const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.description, style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textBody,
-                )),
-                if (item.example.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(item.example, style: const TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 12,
-                    color: AppColors.textMuted,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(item.description, style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textBody,
                   )),
+                  if (item.example.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(item.example, style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                    )),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ],

@@ -5,8 +5,6 @@ import '../widgets/editor/editor_input.dart';
 import '../widgets/editor/editor_scaffold.dart';
 import '../widgets/editor/editor_section.dart';
 
-
-
 class ClipboardEditorSheet extends StatefulWidget {
   final ClipboardAction action;
   final ValueChanged<ClipboardAction> onSave;
@@ -81,7 +79,6 @@ class _ClipboardEditorSheetState extends State<ClipboardEditorSheet> {
                 child: EditorTextField(
                   controller: _targetCtl,
                   hintText: "e.g. clip_data",
-                  enableDslInput: true,
                 ),
             ),
           if (_mode == 'WRITE')
@@ -90,9 +87,9 @@ class _ClipboardEditorSheetState extends State<ClipboardEditorSheet> {
               hint: "Text to write to clipboard. Supports variables.",
               child: EditorTextField(
                   controller: _textCtl,
-                  maxLines: 3,
+                  lines: 3,
                   hintText: "Enter text or \$var",
-                  enableDslInput: true,
+                  enableExpressionInput: true,
               ),
             ),
         ],
@@ -100,4 +97,3 @@ class _ClipboardEditorSheetState extends State<ClipboardEditorSheet> {
     );
   }
 }
-

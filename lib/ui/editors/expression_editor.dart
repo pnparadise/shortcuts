@@ -7,7 +7,6 @@ import '../widgets/editor/editor_input.dart';
 import '../screens/dsl_wiki_screen.dart';
 
 /// Expression editor with multi-line DSL input and auto-completion.
-/// Uses the reusable EditorTextField component with DSL mode enabled.
 class ExpressionEditor extends StatefulWidget {
   final ExpressionAction action;
   final ValueChanged<ExpressionAction> onSave;
@@ -60,18 +59,16 @@ class _ExpressionEditorState extends State<ExpressionEditor> {
             hint: "Multi-line expression script",
             child: EditorTextField(
               controller: _scriptCtl,
-              maxLines: 10,
-              hintText: '// 示例\nid = GET_PARAM \$url "id"\nname = UPPER \$res.data.name',
-              enableDslInput: true,
-              contextVariables: const ['url', 'res', 'res.data', 'res.status', 'item', 'item.id', 'clip'],
+              lines: 6,
+              hintText: '// Example\n\$id = GET_PARAM \$url "id"\n\$name = UPPER \$res.data.name',
+              enableExpressionInput: true,
             ),
           ),
           const SizedBox(height: 16),
-          // Help button
           OutlinedButton.icon(
             onPressed: () => DslWikiScreen.show(context),
             icon: const Icon(Icons.help_outline, size: 18),
-            label: const Text("DSL 语法参考"),
+            label: const Text('DSL syntax reference'),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.textBody,
               side: const BorderSide(color: AppColors.border),
@@ -82,4 +79,3 @@ class _ExpressionEditorState extends State<ExpressionEditor> {
     );
   }
 }
-

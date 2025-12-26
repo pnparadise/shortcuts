@@ -12,7 +12,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  static const platform = MethodChannel('com.example.lowcode/widget');
+  static const platform = MethodChannel('com.shortcuts.shortcuts/widget');
   List<dynamic> _widgets = [];
   bool _loading = true;
   bool _isDragging = false;
@@ -97,11 +97,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 onPressed: _nukeDb,
             )
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(color: AppColors.border, height: 1),
         ),
-      ),
+
       body: Stack(
           children: [
               _loading 
@@ -260,6 +257,18 @@ class _WidgetGridItemContent extends StatelessWidget {
         final iconId = data['iconId'] as String? ?? 'TERMINAL';
         final iconData = IconMap.icons[iconId] ?? Icons.help_outline;
         final label = data['label'] as String? ?? 'Unknown';
+        final gradientId = data['gradientId'] as String? ?? 'BLUE';
+        
+        // Gradient color map matching editor_screen.dart
+        final gradients = {
+          'BLUE': [Color(0xFF00C6FB), Color(0xFF005BEA)],
+          'PURPLE': [Color(0xFF667EEA), Color(0xFF764BA2)],
+          'GREEN': [Color(0xFF11998E), Color(0xFF38EF7D)],
+          'ORANGE': [Color(0xFFFF512F), Color(0xFFF09819)],
+          'RED': [Color(0xFFFF416C), Color(0xFFFF4B2B)],
+        };
+        
+        final gradientColors = gradients[gradientId] ?? gradients['BLUE']!;
         
         return Stack(
           alignment: Alignment.center,
@@ -278,10 +287,10 @@ class _WidgetGridItemContent extends StatelessWidget {
                              boxShadow: isFeedback ? [BoxShadow(color: Colors.black26, blurRadius: 10)] : [],
                          ),
                          child: Container(
-                             decoration: const BoxDecoration(
+                             decoration: BoxDecoration(
                                  shape: BoxShape.circle,
                                  gradient: LinearGradient(
-                                     colors: [Color(0xFF00C6FB), Color(0xFF005BEA)],
+                                     colors: gradientColors,
                                      begin: Alignment.topLeft,
                                      end: Alignment.bottomRight,
                                  ),

@@ -13,8 +13,10 @@ import '../editors/clipboard_editor.dart';
 import '../editors/intent_editor.dart';
 import '../editors/notification_editor.dart';
 import '../editors/expression_editor.dart';
+import 'log_viewer_screen.dart';
 
 import 'flat_editor_utils.dart';
+import '../../utils/variable_inferrer.dart'; // For LogicContext
 
 class EditorScreen extends StatefulWidget {
   final int? widgetId;
@@ -34,17 +36,26 @@ class EditorScreen extends StatefulWidget {
   State<EditorScreen> createState() => _EditorScreenState();
 }
 
+enum _ExitDecision {
+  save,
+  discard,
+  cancel,
+}
+
 class _EditorScreenState extends State<EditorScreen> {
-  static const platform = MethodChannel('com.example.lowcode/widget');
+  static const platform = MethodChannel('com.shortcuts.shortcuts/widget');
   
   List<FlatItem> _flatActions = []; // Flattened list
   bool _loading = false;
   Set<String> _collapsedBlocks = {}; // Track collapsed IF blocks by their ID
+  String _savedSignature = '';
+  bool _handlingExit = false;
   
   // Widget Meta
   late int _localWidgetId;
   String _iconId = "TERMINAL";
   String _label = "My Widget";
+  String _gradientId = "BLUE"; // Gradient color scheme
   
   bool get _isRoot => widget.widgetId != null || (widget.initialActions == null);
 
@@ -54,12 +65,14 @@ class _EditorScreenState extends State<EditorScreen> {
     if (widget.initialActions != null) {
         _flatActions = FlowFlattener.flatten(widget.initialActions!);
         _localWidgetId =  -1;
+        _markSaved();
     } else {
         if (widget.widgetId != null) {
             _localWidgetId = widget.widgetId!;
             _loadWidget();
         } else {
             _localWidgetId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+            _markSaved();
         }
     }
   }
@@ -73,6 +86,7 @@ class _EditorScreenState extends State<EditorScreen> {
         setState(() {
           _iconId = data['iconId'] ?? 'TERMINAL';
           _label = data['label'] ?? 'Widget';
+          _gradientId = data['gradientId'] ?? 'BLUE';
           final logicJson = data['logicFlow'] as String? ?? '[]';
           try {
               final actions = Action.fromJsonList(logicJson);
@@ -86,6 +100,7 @@ class _EditorScreenState extends State<EditorScreen> {
       debugPrint("Load Widget Error: $e");
     } finally {
       if (mounted) setState(() => _loading = false);
+      _markSaved();
     }
   }
 
@@ -104,11 +119,91 @@ class _EditorScreenState extends State<EditorScreen> {
         'widgetId': _localWidgetId,
         'label': _label,
         'iconId': _iconId,
+        'gradientId': _gradientId,
         'jsonConfig': logicJson,
       });
       if (mounted) Navigator.pop(context, true);
     } on PlatformException catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Save Failed: ${e.message}")));
+    }
+  }
+
+  String _buildSignature() {
+    final actions = FlowFlattener.reconstruct(_flatActions);
+    final payload = {
+      'label': _label,
+      'iconId': _iconId,
+      'gradientId': _gradientId,
+      'actions': actions.map((e) => e.toJson()).toList(),
+    };
+    return jsonEncode(payload);
+  }
+
+  void _markSaved() {
+    _savedSignature = _buildSignature();
+  }
+
+  bool get _isDirty => _buildSignature() != _savedSignature;
+
+  Future<_ExitDecision?> _showUnsavedDialog() {
+    return showDialog<_ExitDecision>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.cardBg,
+        title: Text('Unsaved changes', style: TextStyle(color: AppColors.textHeader)),
+        content: Text(
+          'You have unsaved changes. Save before leaving?',
+          style: TextStyle(color: AppColors.textBody),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, _ExitDecision.cancel),
+            child: Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, _ExitDecision.discard),
+            child: Text('Discard', style: TextStyle(color: Colors.redAccent)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, _ExitDecision.save),
+            child: Text('Save', style: TextStyle(color: AppColors.primary)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleExitRequest() async {
+    if (_handlingExit) return;
+    _handlingExit = true;
+    try {
+      // For branch pages (THEN/ELSE), always auto-save changes without prompting
+      if (!_isRoot) {
+        final actions = FlowFlattener.reconstruct(_flatActions);
+        widget.onFlowChanged?.call(actions);
+        Navigator.pop(context);
+        return;
+      }
+
+      // For root page, check for unsaved changes
+      if (!_isDirty) {
+        Navigator.pop(context);
+        return;
+      }
+
+      final decision = await _showUnsavedDialog();
+      if (!mounted) return;
+
+      if (decision == _ExitDecision.save) {
+        await _saveWidget();
+      } else if (decision == _ExitDecision.discard) {
+        Navigator.pop(context);
+      }
+    } finally {
+      if (mounted) {
+        _handlingExit = false;
+      }
     }
   }
 
@@ -120,23 +215,57 @@ class _EditorScreenState extends State<EditorScreen> {
   // I MUST include _editMetadata and other methods.
 
   void _editMetadata() {
-      // (Simplified reuse of existing logic)
+      // Gradient schemes with display colors
+      final gradients = {
+        'BLUE': [Color(0xFF00C6FB), Color(0xFF005BEA)],
+        'PURPLE': [Color(0xFF667EEA), Color(0xFF764BA2)],
+        'GREEN': [Color(0xFF11998E), Color(0xFF38EF7D)],
+        'ORANGE': [Color(0xFFFF512F), Color(0xFFF09819)],
+        'RED': [Color(0xFFFF416C), Color(0xFFFF4B2B)],
+      };
+      
       String tempName = _label;
-      showDialog(context: context, builder: (_) => AlertDialog(
+      String tempGradient = _gradientId;
+      
+      showDialog(context: context, builder: (_) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
           title: const Text("Widget Settings"),
-          content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                  TextField(controller: TextEditingController(text: _label), onChanged: (v) => tempName = v, decoration: const InputDecoration(labelText: "Widget Name")),
-                  const SizedBox(height: 16),
-                  Wrap(spacing: 12, children: IconMap.icons.keys.map((key) => InkWell(
-                      onTap: () { setState(() => _iconId = key); Navigator.pop(context); _editMetadata(); },
-                      child: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: _iconId == key ? AppColors.primary.withOpacity(0.2) : null, borderRadius: BorderRadius.circular(8), border: Border.all(color: _iconId == key ? AppColors.primary : Colors.transparent)), child: Icon(IconMap.icons[key], color: _iconId == key ? AppColors.primary : Colors.grey)),
-                  )).toList())
-              ],
+          content: SingleChildScrollView(
+              child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                      TextField(controller: TextEditingController(text: _label), onChanged: (v) => tempName = v, decoration: const InputDecoration(labelText: "Widget Name")),
+                      const SizedBox(height: 16),
+                      const Text("Icon", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      const SizedBox(height: 8),
+                      Wrap(spacing: 12, children: IconMap.icons.keys.map((key) => InkWell(
+                          onTap: () { setState(() => _iconId = key); Navigator.pop(context); _editMetadata(); },
+                          child: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: _iconId == key ? AppColors.primary.withOpacity(0.2) : null, borderRadius: BorderRadius.circular(8), border: Border.all(color: _iconId == key ? AppColors.primary : Colors.transparent)), child: Icon(IconMap.icons[key], color: _iconId == key ? AppColors.primary : Colors.grey)),
+                      )).toList()),
+                      const SizedBox(height: 16),
+                      const Text("Color Scheme", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      const SizedBox(height: 8),
+                      Wrap(spacing: 10, runSpacing: 10, children: gradients.entries.map((entry) => InkWell(
+                          onTap: () => setDialogState(() => tempGradient = entry.key),
+                          child: Container(
+                              width: 36, height: 36,
+                              decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(colors: entry.value, begin: Alignment.topLeft, end: Alignment.bottomRight),
+                                  border: Border.all(color: tempGradient == entry.key ? Colors.white : Colors.transparent, width: 2),
+                                  boxShadow: tempGradient == entry.key ? [BoxShadow(color: entry.value.first.withOpacity(0.5), blurRadius: 8)] : null,
+                              ),
+                          ),
+                      )).toList()),
+                  ],
+              ),
           ),
-          actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")), TextButton(onPressed: () { setState(() => _label = tempName); Navigator.pop(context); }, child: const Text("Save"))],
-      ));
+          actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")), 
+              TextButton(onPressed: () { setState(() { _label = tempName; _gradientId = tempGradient; }); Navigator.pop(context); }, child: const Text("Save"))
+          ],
+      )));
   }
 
   void _updateActionInFlatList(String id, Action newAction) {
@@ -163,16 +292,79 @@ class _EditorScreenState extends State<EditorScreen> {
   
   void _deleteFlatItem(int index) {
       final item = _flatActions[index];
+      final marker = _findEnclosingBranchMarker(index, item.depth);
       setState(() {
-          _flatActions.removeAt(index);
-          // If IF Header, remove children block too?
+          // If IF Header, remove the entire IF block (including nested content).
           if (item.type == FlatItemType.ifStart) {
-               // item.id is "IF_START_originalId"
-               // children parentId is "originalId"
                final baseId = item.id.replaceFirst("IF_START_", "");
-               _flatActions.removeWhere((e) => e.parentId == baseId);
+               final endIdx = _flatActions.indexWhere(
+                   (e) => e.type == FlatItemType.endIfMarker && e.parentId == baseId
+               );
+               if (endIdx != -1 && endIdx >= index) {
+                   _flatActions.removeRange(index, endIdx + 1);
+               } else {
+                   _flatActions.removeAt(index);
+                   _flatActions.removeWhere((e) => e.parentId == baseId);
+               }
+          } else {
+              _flatActions.removeAt(index);
+          }
+          if (marker != null) {
+              _ensureEmptyPlaceholder(marker);
           }
       });
+  }
+
+  FlatItem? _findEnclosingBranchMarker(int index, int depth) {
+      if (depth == 0) return null;
+      for (int i = index - 1; i >= 0; i--) {
+          final prev = _flatActions[i];
+          if (prev.depth < depth) break;
+          if (prev.depth == depth && (prev.type == FlatItemType.thenMarker || prev.type == FlatItemType.elseMarker)) {
+              return prev;
+          }
+      }
+      return null;
+  }
+
+  void _ensureEmptyPlaceholder(FlatItem marker) {
+      final markerIdx = _flatActions.indexWhere((e) => e.id == marker.id);
+      if (markerIdx == -1) return;
+
+      var hasAction = false;
+      var hasPlaceholder = false;
+      for (int i = markerIdx + 1; i < _flatActions.length; i++) {
+          final next = _flatActions[i];
+          if (next.depth < marker.depth) break;
+          if (next.depth == marker.depth && 
+              (next.type == FlatItemType.elseMarker || 
+               next.type == FlatItemType.endIfMarker ||
+               next.type == FlatItemType.thenMarker)) break;
+          if (next.type == FlatItemType.emptyPlaceholder) {
+              hasPlaceholder = true;
+              break;
+          }
+          if (next.type == FlatItemType.action || next.type == FlatItemType.ifStart) {
+              hasAction = true;
+              break;
+          }
+      }
+
+      if (hasAction || hasPlaceholder) return;
+
+      final placeholderId = marker.type == FlatItemType.thenMarker
+          ? 'EMPTY_TRUE_${marker.parentId}'
+          : 'EMPTY_FALSE_${marker.parentId}';
+      _flatActions.insert(
+          markerIdx + 1,
+          FlatItem(
+              id: placeholderId,
+              type: FlatItemType.emptyPlaceholder,
+              depth: marker.depth,
+              parentId: marker.parentId,
+              ancestorLines: marker.ancestorLines,
+          ),
+      );
   }
 
   void _openActionEditor(int index, Action action) {
@@ -195,6 +387,11 @@ class _EditorScreenState extends State<EditorScreen> {
   // Or we use it to edit the Condition only.
 
   void _openEditorWithCallback(Action action, ValueChanged<Action> onSave) {
+      // Update LogicContext with current flow for variable inference
+      final actions = FlowFlattener.reconstruct(_flatActions);
+      LogicContext.setFlow(actions);
+      debugPrint("LogicContext updated with ${actions.length} actions: ${LogicContext.inferAllVariables()}");
+      
       if (action is FetchAction) {
           showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (_) => FetchEditorSheet(action: action, onSave: onSave));
       } else if (action is ToastAction) {
@@ -215,22 +412,33 @@ class _EditorScreenState extends State<EditorScreen> {
       }
   }
 
+  void _handleBack() {
+    _handleExitRequest();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.scaffoldBg,
-      appBar: AppBar(
-        leadingWidth: Navigator.canPop(context) ? 48 : 16, // Consistent left margin
-        leading: Navigator.canPop(context) ? IconButton(
-            icon: const Icon(Icons.arrow_back, color: AppColors.textHeader),
-            onPressed: () => Navigator.pop(context),
-        ) : const SizedBox(width: 16), // Spacer when no back button
-        titleSpacing: 0, // Control spacing manually
-        title: InkWell(
-            onTap: _isRoot ? _editMetadata : null,
-            child: Row(
-                mainAxisSize: MainAxisSize.min, 
-                children: [
+    return PopScope(
+      canPop: false, // Always intercept to confirm unsaved changes
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          _handleExitRequest();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.scaffoldBg,
+        appBar: AppBar(
+          leadingWidth: Navigator.canPop(context) ? 48 : 16, // Consistent left margin
+          leading: Navigator.canPop(context) ? IconButton(
+              icon: const Icon(Icons.arrow_back, color: AppColors.textHeader),
+              onPressed: _handleBack,
+          ) : const SizedBox(width: 16), // Spacer when no back button
+          titleSpacing: 0, // Control spacing manually
+          title: InkWell(
+              onTap: _isRoot ? _editMetadata : null,
+              child: Row(
+                  mainAxisSize: MainAxisSize.min, 
+                  children: [
                     if (_isRoot) ...[
                         Icon(IconMap.getIcon(_iconId), size: 20, color: AppColors.textHeader), 
                         const SizedBox(width: 10)
@@ -252,6 +460,14 @@ class _EditorScreenState extends State<EditorScreen> {
         backgroundColor: AppColors.cardBg,
         elevation: 0,
         actions: [
+            if (_isRoot) IconButton(
+                icon: Icon(Icons.history, color: AppColors.primary),
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => LogViewerScreen(
+                    logicId: _localWidgetId,
+                    title: _label,
+                ))),
+                tooltip: "View Logs",
+            ),
             if (_isRoot) IconButton(
                 icon: const Icon(Icons.save, color: Colors.grey),
                 onPressed: _saveWidget,
@@ -362,6 +578,7 @@ class _EditorScreenState extends State<EditorScreen> {
               }
           },
       ),
+    ),
     );
   }
 
@@ -421,34 +638,55 @@ class _EditorScreenState extends State<EditorScreen> {
            // Minimal height for END marker to reduce bottom spacing
            return const SizedBox(height: 4); 
       } else if (item.type == FlatItemType.emptyPlaceholder) {
-           return Material(
-               color: AppColors.cardBg.withOpacity(0.9),
-               child: Container(
-                   height: 56, // Fixed height standard for single line list item
-                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                   alignment: Alignment.centerLeft, // Center vertically
-                   child: Row(
-                       children: [
-                           Container(
-                               padding: const EdgeInsets.all(6),
-                               decoration: BoxDecoration(
-                                   color: Colors.grey.withOpacity(0.1),
-                                   borderRadius: BorderRadius.circular(6),
+           return InkWell(
+               onTap: () async {
+                   final newAction = await showModalBottomSheet<Action>(
+                       context: context, 
+                       backgroundColor: Colors.transparent, 
+                       isScrollControlled: true,
+                       builder: (_) => const ActionPicker()
+                   );
+                   if (newAction != null) {
+                       setState(() {
+                           // Replace empty placeholder with the new action
+                           final idx = _flatActions.indexOf(item);
+                           if (idx != -1) {
+                               final newItems = FlowFlattener.flatten([newAction], depth: item.depth, lines: item.ancestorLines);
+                               _flatActions.removeAt(idx);
+                               _flatActions.insertAll(idx, newItems);
+                           }
+                       });
+                   }
+               },
+               child: Material(
+                   color: AppColors.cardBg,
+                   child: Padding(
+                       padding: const EdgeInsets.all(12),
+                       child: Row(
+                           children: [
+                               Container(
+                                   padding: const EdgeInsets.all(8),
+                                   decoration: BoxDecoration(
+                                       color: Colors.grey.withOpacity(0.1),
+                                       borderRadius: BorderRadius.circular(8),
+                                   ),
+                                   child: const Icon(Icons.add_circle_outline, color: Colors.grey, size: 20),
                                ),
-                               child: const Icon(Icons.do_not_disturb_on_outlined, color: Colors.grey, size: 18),
-                           ),
-                           const SizedBox(width: 12),
-                           Expanded(
-                               child: Column(
-                                   mainAxisSize: MainAxisSize.min, // Center vertically
-                                   crossAxisAlignment: CrossAxisAlignment.start,
-                                   children: [
-                                       Text("EMPTY", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey), maxLines: 1),
-                                       Text("No actions in this block", style: const TextStyle(fontSize: 10, color: Colors.grey), maxLines: 1),
-                                   ],
+                               const SizedBox(width: 12),
+                               Expanded(
+                                   child: Column(
+                                       crossAxisAlignment: CrossAxisAlignment.start,
+                                       children: [
+                                           const Text("Tap to add", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textHeader), maxLines: 1),
+                                           Padding(
+                                               padding: const EdgeInsets.only(top: 4),
+                                               child: const Text("No actions in this block", style: TextStyle(fontSize: 11, color: AppColors.textBody), maxLines: 1),
+                                           ),
+                                       ],
+                                   ),
                                ),
-                           ),
-                       ],
+                           ],
+                       ),
                    ),
                ),
            );
@@ -494,23 +732,36 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   void _openBranchEditor(FlatItem marker, bool isTrueBranch) {
-       // Find Parent IfAction
-       // Parent ID is stored in item.parentId. 
-       // Depending on structure, parent might be earlier in list.
-       // Actually id format: THEN_IF_START_Intent_hash_idx
-       // parentId should be the ID of the IF_START item?
-       
-       // Scan backwards for parentId? Or just item.parentId matches `id` of IfStart?
-       // FlatItem definition: parentId stores the id of the parent item.
-       
        try {
            // parentId is the raw ID, but ifStart has ID "IF_START_$id"
-           final parentInfo = _flatActions.firstWhere((e) => e.id == "IF_START_${marker.parentId}" && e.type == FlatItemType.ifStart);
-           final ifAction = parentInfo.action as IfAction;
+           final parentStartId = "IF_START_${marker.parentId}";
+           final parentInfo = _flatActions.firstWhere((e) => e.id == parentStartId && e.type == FlatItemType.ifStart);
            
            if (parentInfo.action == null) return;
-
-           final subFlow = isTrueBranch ? ifAction.trueFlow : ifAction.falseFlow;
+           
+           // Extract current branch content from _flatActions (not from stale ifAction)
+           final markerIdx = _flatActions.indexOf(marker);
+           List<FlatItem> branchItems = [];
+           for (int i = markerIdx + 1; i < _flatActions.length; i++) {
+               final item = _flatActions[i];
+               // Stop at sibling/parent markers
+               if (item.depth <= marker.depth && 
+                   (item.type == FlatItemType.elseMarker || 
+                    item.type == FlatItemType.endIfMarker ||
+                    item.type == FlatItemType.thenMarker)) break;
+               if (item.depth < marker.depth) break;
+               branchItems.add(item);
+           }
+           
+           // Reconstruct branch actions from flat items
+           final subFlow = FlowFlattener.reconstruct(branchItems);
+           debugPrint("Opening branch with ${subFlow.length} actions from ${branchItems.length} flat items");
+           
+           // Capture the base ID for later lookup in callback
+           final capturedBaseId = marker.parentId!;
+           final capturedParentId = parentStartId;
+           final capturedDepth = parentInfo.depth;
+           final capturedLines = parentInfo.ancestorLines;
            
            Navigator.push(
                context,
@@ -519,41 +770,44 @@ class _EditorScreenState extends State<EditorScreen> {
                        title: isTrueBranch ? "THEN Logic" : "ELSE Logic",
                        initialActions: subFlow,
                        onFlowChanged: (newFlow) {
-                           // We need to update the parent IF action with the new flow
+                           debugPrint("onFlowChanged called with ${newFlow.length} actions");
+                           debugPrint("Looking for parent: $capturedParentId");
+                           
+                           // Re-lookup current parent info in _flatActions
+                           final pIdx = _flatActions.indexWhere((e) => e.id == capturedParentId);
+                           debugPrint("Parent found at index: $pIdx");
+                           
+                           if (pIdx == -1) {
+                               debugPrint("Error: Parent IF not found: $capturedParentId");
+                               return;
+                           }
+                           
+                           final currentParent = _flatActions[pIdx];
+                           final currentIfAction = currentParent.action as IfAction;
+                           
+                           // Build new IF action with updated flow
                            final newIf = isTrueBranch 
-                               ? ifAction.copyWith(trueFlow: newFlow)
-                               : ifAction.copyWith(falseFlow: newFlow);
+                               ? currentIfAction.copyWith(trueFlow: newFlow)
+                               : currentIfAction.copyWith(falseFlow: newFlow);
                            
-                           // Update the parent item in _flatActions provided we can find it by index/reference
-                           // Easier: update the PARENT of the list? No, this is recursion.
-                           // We are updating local state.
+                           debugPrint("Looking for END marker with baseId: $capturedBaseId");
+                           final endIdx = _flatActions.indexWhere((e) => e.type == FlatItemType.endIfMarker && e.parentId == capturedBaseId);
+                           debugPrint("END marker found at index: $endIdx");
                            
-                           // find index of parentInfo again
-                           final pIdx = _flatActions.indexWhere((e) => e.id == parentInfo.id);
-                           if (pIdx != -1) {
-                               // Update the main list?
-                               // Wait, simplest way: Just update the Action object and re-flatten everything?
-                               // Or calling `onEditNested` logic?
-                               
-                               // We update the specific item in the flat list.
-                               // But flat list copies actions.
-                               
+                           if (endIdx != -1 && endIdx >= pIdx) {
+                               debugPrint("Updating range [$pIdx, $endIdx]");
                                setState(() {
-                                   // Update the action in the flat list
-                                   // We need to reconstruct really to be safe, OR just re-flatten this Action.
-                                   // But replacing the IF action implies replacing its children in flat list.
-                                   // So:
-                                   // 1. Remove the old IF block range.
-                                   // 2. Flatten new IF action.
-                                   // 3. Insert.
-                                   
-                                   // Find range:
-                                   final endIdx = _flatActions.indexWhere((e) => e.type == FlatItemType.endIfMarker && e.parentId == parentInfo.id);
-                                   if (endIdx != -1) {
-                                       _flatActions.removeRange(pIdx, endIdx + 1);
-                                       _flatActions.insertAll(pIdx, FlowFlattener.flatten([newIf], depth: parentInfo.depth, lines: parentInfo.ancestorLines));
-                                   }
+                                   _flatActions.removeRange(pIdx, endIdx + 1);
+                                   final newItems = FlowFlattener.flatten([newIf], depth: capturedDepth, lines: capturedLines);
+                                   debugPrint("Inserting ${newItems.length} new items");
+                                   _flatActions.insertAll(pIdx, newItems);
                                });
+                           } else {
+                               debugPrint("Error: END marker not found for baseId: $capturedBaseId");
+                               // Debug: print all flat action IDs
+                               for (var i = 0; i < _flatActions.length; i++) {
+                                   debugPrint("  [$i] id=${_flatActions[i].id}, type=${_flatActions[i].type}, parentId=${_flatActions[i].parentId}");
+                               }
                            }
                        },
                    )

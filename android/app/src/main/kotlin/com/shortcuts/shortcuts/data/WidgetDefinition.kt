@@ -10,6 +10,7 @@ data class WidgetDefinition(
     val label: String = "New Widget",
     val iconId: String = IconEnum.TERMINAL.name,
     val themeColor: Long = 0xFF007BFFL, // Default Blue
+    val gradientId: String = GradientEnum.BLUE.name, // Gradient background scheme
     val logicFlow: String = "[]" // JSON of List<Action>
 )
 
@@ -23,3 +24,16 @@ enum class IconEnum(val resId: Int) {
         fun fromId(id: String): IconEnum? = entries.find { it.name == id }
     }
 }
+
+enum class GradientEnum(val resId: Int) {
+    BLUE(R.drawable.gradient_blue),
+    PURPLE(R.drawable.gradient_purple),
+    GREEN(R.drawable.gradient_green),
+    ORANGE(R.drawable.gradient_orange),
+    RED(R.drawable.gradient_red);
+
+    companion object {
+        fun fromId(id: String): GradientEnum? = entries.find { it.name == id }
+    }
+}
+

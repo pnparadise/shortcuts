@@ -10,7 +10,7 @@
     - `models.dart`: JSON serialization and Action definitions.
     - `theme.dart`: Centralized colors and typography.
 - `android/` contains the native execution engine:
-    - `MainActivity.kt`: MethodChannel handlers (`com.example.lowcode/widget`).
+    - `MainActivity.kt`: MethodChannel handlers (`com.shortcuts.shortcuts/widget`).
     - `engine/LogicEngine.kt`: Background execution engine (Kotlin) for running flows without UI.
     - `data/`: Room Database definitions (`WidgetDefinition`, `AppDatabase`).
 - `test/widget_test.dart`: Widget and rendering tests.
@@ -29,6 +29,10 @@
 - Files: snake_case (`action_picker.dart`), classes in `PascalCase`, methods/fields in `camelCase`, constants in `lowerCamelCase` unless enum-like.
 - Keep UI colors and typography in `theme.dart`; extend `AppColors`/`AppStyles` instead of inlining magic values.
 - Use trailing commas in widget trees to keep formatter-friendly diffs.
+## UI Design Language
+- Visual style: blue-toned palette with a clean, borderless look.
+- Prefer edge-to-edge list items without card borders; use spacing and subtle fills for separation.
+- Keep background fills light and cool (blue-white), especially for code/detail blocks.
 
 ## Testing Guidelines
 - Place tests under `test/` mirroring `lib/` structure; name files `*_test.dart` and test widgets with `testWidgets`.

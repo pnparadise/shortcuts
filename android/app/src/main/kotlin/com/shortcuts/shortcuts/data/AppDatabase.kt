@@ -39,7 +39,7 @@ interface PinnedWidgetDao {
     suspend fun deletePinnedWidget(appWidgetId: Int)
 }
 
-@Database(entities = [WidgetDefinition::class, PinnedWidget::class], version = 2, exportSchema = false)
+@Database(entities = [WidgetDefinition::class, PinnedWidget::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun widgetDao(): WidgetDao
     abstract fun pinnedWidgetDao(): PinnedWidgetDao

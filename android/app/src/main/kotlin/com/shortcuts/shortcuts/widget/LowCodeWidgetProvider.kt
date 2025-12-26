@@ -9,6 +9,7 @@ import android.widget.RemoteViews
 import android.util.Log
 import com.shortcuts.shortcuts.R
 import com.shortcuts.shortcuts.data.AppDatabase
+import com.shortcuts.shortcuts.data.GradientEnum
 import com.shortcuts.shortcuts.data.IconEnum
 import com.shortcuts.shortcuts.data.WidgetDefinition
 import com.shortcuts.shortcuts.dsl.Action
@@ -122,8 +123,14 @@ class LowCodeWidgetProvider : AppWidgetProvider() {
                 Log.d("LowCodeWidget", "runLogic: Executing ${actions.size} actions")
                 val contextManager = ContextManager()
                 
-                // 3. Execute Flow
-                LogicEngine(context).executeFlow(actions, contextManager)
+                // 3. Execute Flow (pass logicId and widgetId for logging)
+                val logicId = widgetDef.widgetId
+                LogicEngine(
+                    context, 
+                    com.shortcuts.shortcuts.data.LogRepository(context),
+                    logicId,
+                    appWidgetId
+                ).executeFlow(actions, contextManager)
                 
                 // 4. Handle "SetView" result
                 val newLabel = contextManager.context["_view_text"] as? String
@@ -200,6 +207,10 @@ class LowCodeWidgetProvider : AppWidgetProvider() {
             views.setImageViewResource(R.id.iv_icon, iconRes)
             // Tint the ICON White
             views.setInt(R.id.iv_icon, "setColorFilter", android.graphics.Color.WHITE)
+            
+            // Gradient Background
+            val gradientRes = GradientEnum.fromId(widgetDef.gradientId)?.resId ?: R.drawable.gradient_blue
+            views.setInt(R.id.icon_bg_container, "setBackgroundResource", gradientRes)
         }
         
         // VISIBILITY TOGGLE (Ensure correct state during full update)

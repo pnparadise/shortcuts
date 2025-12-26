@@ -15,6 +15,8 @@ object GsonHelper {
             .registerSubtype(Action.Return::class.java, "Return")
             .registerSubtype(Action.Clipboard::class.java, "Clipboard")
             .registerSubtype(Action.Intent::class.java, "Intent")
+            .registerSubtype(Action.Notification::class.java, "Notification")
+            .registerSubtype(Action.Expression::class.java, "Expression")
 
         GsonBuilder()
             .registerTypeAdapterFactory(actionAdapterFactory)

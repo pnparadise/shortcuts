@@ -19,7 +19,7 @@ class EditorSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final double bottomPadding = compact ? 12 : 20;
     final double hintGap = compact ? 2 : 4;
-    final double fieldGap = compact ? 6 : 8;
+    final double fieldGap = compact ? 10 : 8;
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottomPadding),

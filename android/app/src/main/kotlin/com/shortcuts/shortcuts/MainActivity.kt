@@ -17,7 +17,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class MainActivity: FlutterActivity() {
-    private val CHANNEL = "com.example.lowcode/widget"
+    private val CHANNEL = "com.shortcuts.shortcuts/widget"
     private var appWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -38,8 +38,9 @@ class MainActivity: FlutterActivity() {
                 val iconId = call.argument<String>("iconId") ?: "TERMINAL"
                 val colorObj = call.argument<Any>("color")
                 val color = (colorObj as? Number)?.toLong() ?: 0xFF007BFFL
+                val gradientId = call.argument<String>("gradientId") ?: "BLUE"
                 
-                android.util.Log.d("LowCode", "Saving: LogicID=$logicId, Label=$label, AppWidgetId=$appWidgetId")
+                android.util.Log.d("LowCode", "Saving: LogicID=$logicId, Label=$label, GradientId=$gradientId, AppWidgetId=$appWidgetId")
 
                 scope.launch {
                     val db = AppDatabase.getDatabase(applicationContext)
@@ -50,7 +51,8 @@ class MainActivity: FlutterActivity() {
                         label = label,
                         logicFlow = jsonConfig,
                         iconId = iconId,
-                        themeColor = color
+                        themeColor = color,
+                        gradientId = gradientId
                     )
                     withContext(Dispatchers.IO) {
                         db.widgetDao().insertWidget(widgetDef)
@@ -107,6 +109,7 @@ class MainActivity: FlutterActivity() {
                                 "label" to widget.label,
                                 "iconId" to widget.iconId,
                                 "themeColor" to widget.themeColor,
+                                "gradientId" to widget.gradientId,
                                 "logicFlow" to widget.logicFlow
                             ))
                         } else {
@@ -128,7 +131,8 @@ class MainActivity: FlutterActivity() {
                              "widgetId" to it.widgetId,
                              "label" to it.label,
                              "iconId" to it.iconId,
-                             "themeColor" to it.themeColor
+                             "themeColor" to it.themeColor,
+                             "gradientId" to it.gradientId
                          )
                     }
                     result.success(jsonList)
@@ -182,7 +186,8 @@ class MainActivity: FlutterActivity() {
                              val action = GsonHelper.gson.fromJson(jsonStr, com.shortcuts.shortcuts.dsl.Action::class.java)
                              
                              val contextManager = com.shortcuts.shortcuts.engine.ContextManager()
-                             val engine = com.shortcuts.shortcuts.engine.LogicEngine(applicationContext)
+                             val logRepo = com.shortcuts.shortcuts.data.LogRepository(applicationContext)
+                             val engine = com.shortcuts.shortcuts.engine.LogicEngine(applicationContext, logRepo)
                              
                              // Run single action as a flow on IO thread to avoid NetworkOnMainThreadException
                              withContext(Dispatchers.IO) {
@@ -216,6 +221,57 @@ class MainActivity: FlutterActivity() {
                         getLaunchableApps()
                     }
                     result.success(apps)
+                }
+            } else if (call.method == "getDslSuggestions") {
+                val text = call.argument<String>("text") ?: ""
+                val cursorIndex = call.argument<Int>("cursorIndex") ?: 0
+                val variables = call.argument<List<String>>("variables") ?: emptyList()
+
+                scope.launch {
+                     val suggestions = withContext(Dispatchers.Default) {
+                         val cm = com.shortcuts.shortcuts.engine.ContextManager()
+                         val engine = com.shortcuts.shortcuts.engine.DslAutocompleteEngine(cm)
+                         engine.setExplicitVariables(variables)
+                         engine.getSuggestions(text, cursorIndex)
+                     }
+                     result.success(suggestions.map { it.toMap() })
+                }
+            } else if (call.method == "getLogs") {
+                val logicId = (call.argument<Any>("logicId") as? Number)?.toInt() ?: -1
+                scope.launch {
+                    try {
+                        val logs = withContext(Dispatchers.IO) {
+                            com.shortcuts.shortcuts.data.LogRepository(applicationContext).getLogs(logicId)
+                        }
+                        result.success(logs)
+                    } catch (e: Exception) {
+                        result.error("DB_ERROR", e.message, e.stackTraceToString())
+                    }
+                }
+            } else if (call.method == "clearLogs") {
+                val logicId = (call.argument<Any>("logicId") as? Number)?.toInt() ?: -1
+                scope.launch {
+                    try {
+                        withContext(Dispatchers.IO) {
+                            com.shortcuts.shortcuts.data.LogRepository(applicationContext).clearLogs(logicId)
+                        }
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("DB_ERROR", e.message, e.stackTraceToString())
+                    }
+                }
+            } else if (call.method == "deleteLogs") {
+                // Same implementation as clearLogs, functionally identical for a logicId
+                val logicId = (call.argument<Any>("logicId") as? Number)?.toInt() ?: -1
+                scope.launch {
+                    try {
+                        withContext(Dispatchers.IO) {
+                            com.shortcuts.shortcuts.data.LogRepository(applicationContext).clearLogs(logicId)
+                        }
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("DB_ERROR", e.message, e.stackTraceToString())
+                    }
                 }
             } else {
                 result.notImplemented()

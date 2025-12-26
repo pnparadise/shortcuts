@@ -6,6 +6,7 @@ import android.widget.Toast
 
 class ToastActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        overridePendingTransition(0, 0)
         super.onCreate(savedInstanceState)
         
         val msg = intent.getStringExtra("message") ?: ""
@@ -14,7 +15,7 @@ class ToastActivity : Activity() {
             val layout = inflater.inflate(com.shortcuts.shortcuts.R.layout.custom_toast, null)
             layout.findViewById<android.widget.TextView>(com.shortcuts.shortcuts.R.id.toast_text).text = msg
             
-            val toast = Toast(this)
+            val toast = Toast(applicationContext)
             toast.duration = Toast.LENGTH_SHORT
             try {
                 @Suppress("DEPRECATION")
@@ -27,11 +28,8 @@ class ToastActivity : Activity() {
             }
         }
         
-        // Use Handler to finish slightly later to ensure Toast is posted
-        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-            finish()
-            overridePendingTransition(0, 0)
-        }, 100)
+        finish()
+        overridePendingTransition(0, 0)
     }
 }
 

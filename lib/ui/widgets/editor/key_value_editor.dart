@@ -10,7 +10,6 @@ class KeyValueEditor extends StatefulWidget {
   final List<String> keySuggestions;
   final List<String> Function(String key)? valueSuggestions;
   final bool enableDslValue;
-  final List<String> contextVariables;
 
   const KeyValueEditor({
     super.key,
@@ -21,7 +20,6 @@ class KeyValueEditor extends StatefulWidget {
     this.keySuggestions = const [],
     this.valueSuggestions,
     this.enableDslValue = true,
-    this.contextVariables = const ['res', 'res.data', 'res.status', 'clip', 'url'],
   });
 
   @override
@@ -84,8 +82,7 @@ class _KeyValueEditorState extends State<KeyValueEditor> {
       controller: controller,
       hintText: widget.valueLabel,
       autofillHints: widget.valueSuggestions?.call(_rows[index].key) ?? const [],
-      enableDslInput: widget.enableDslValue,
-      contextVariables: widget.contextVariables,
+      enableExpressionInput: widget.enableDslValue,
       onChanged: (v) => _onRowChanged(index, _rows[index].key, v),
     );
   }

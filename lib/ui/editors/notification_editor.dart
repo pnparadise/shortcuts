@@ -5,10 +5,10 @@ import '../widgets/editor/editor_input.dart';
 import '../widgets/editor/editor_scaffold.dart';
 import '../widgets/editor/editor_section.dart';
 
-
 class NotificationEditor extends StatefulWidget {
   final NotificationAction action;
   final ValueChanged<NotificationAction> onSave;
+  
   const NotificationEditor({super.key, required this.action, required this.onSave});
 
   static void show(BuildContext context, NotificationAction action, ValueChanged<NotificationAction> onSave) {
@@ -58,13 +58,20 @@ class _NotificationEditorState extends State<NotificationEditor> {
           body: ListView(
               padding: const EdgeInsets.all(20),
               children: [
+                  Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(
+                          'Please allow notification permission to show alerts.',
+                          style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                      ),
+                  ),
                   EditorSection(
                       title: "Title",
                       hint: "Notification title (supports variables)",
                       child: EditorTextField(
                           controller: _titleCtl,
                           hintText: "Task Complete",
-                          enableDslInput: true,
+                          enableExpressionInput: true,
                       ),
                   ),
                   EditorSection(
@@ -72,9 +79,9 @@ class _NotificationEditorState extends State<NotificationEditor> {
                       hint: "Notification body (supports variables)",
                       child: EditorTextField(
                           controller: _messageCtl,
-                          maxLines: 3,
+                          lines: 3,
                           hintText: "Your task has been completed successfully.",
-                          enableDslInput: true,
+                          enableExpressionInput: true,
                       ),
                   ),
               ],
@@ -82,4 +89,3 @@ class _NotificationEditorState extends State<NotificationEditor> {
       );
   }
 }
-
