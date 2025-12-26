@@ -1,17 +1,30 @@
 # LowCode Shortcuts
 
-A powerful Flutter-based application for creating, managing, and executing dynamic logic "shortcuts" directly from your Android Home Screen or within the app.
+A Flutter-based app for creating, managing, and executing automation shortcuts from a visual editor, with Android widgets and a native Kotlin execution engine.
+
+Long-term, the project aims to reach feature parity with Apple Shortcuts while staying fast, reliable, and Android-native.
 
 ## Features
 
-- **Visual Dashboard**: Drag & drop interface to manage your shortcuts.
+- **Visual Dashboard**: Drag & drop management for flows, quick launch, and widget pinning.
 - **Low-Code Editor**:
-  - **Fetch**: Make HTTP requests with customizable headers, body, and method.
-  - **Logic**: Use `If/Else` blocks with nested flows (True/False branches).
-  - **UI/UX**: Show Toasts or update Widget views dynamically.
-  - **Variable Support**: Inject variables from previous steps (e.g., `{{response.status}}`).
-- **Native Android Widgets**: Pin your shortcuts to the home screen as fully functional Android Widgets.
-- **Smart Logic Engine**: Native Kotlin engine (`LogicEngine`) executes flows efficiently in the background.
+  - **Fetch**: HTTP requests with custom headers, body, and method.
+  - **Logic**: `If/Else` branching with nested flows.
+  - **UI/UX**: Toasts, notifications, and widget view updates.
+  - **Expressions**: Variable interpolation, functions, and math for derived values.
+- **Native Android Widgets**: Run flows directly from home screen widgets.
+- **Smart Logic Engine**: Kotlin `LogicEngine` executes flows off the UI thread.
+- **Logs & Debugging**: Per-widget execution logs for tracing and troubleshooting.
+
+## Project Overview
+
+LowCode Shortcuts focuses on fast, reliable automations that are easy to build. The editor keeps flows understandable, while the native engine handles execution so shortcuts run even when the UI is closed. The goal is to make complex automations approachable without sacrificing power.
+
+## Roadmap Direction
+
+- Expand the action library (system intents, files, notifications, and more).
+- Improve sharing/export/import of flows.
+- Polish the editor UX with better validation and inline feedback.
 
 ## Design Language
 
