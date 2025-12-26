@@ -117,7 +117,7 @@ class DslAutocompleteEngine(private val contextManager: ContextManager) {
             }
 
             // 3. 在数值/变量/字符串后，提示运算符
-            isExpectOperator(prefix) -> {
+            isExpectOperator(prefix.substring(0, lastWordStart)) -> {
                 INFIX_OPERATORS.filter {
                     lastWord.isEmpty() || it.startsWith(lastWord.uppercase())
                 }.map {
@@ -211,7 +211,7 @@ class DslAutocompleteEngine(private val contextManager: ContextManager) {
      */
     private fun extractScriptVariables(content: String): List<String> {
         val found = mutableListOf<String>()
-        val assignmentRegex = Regex("""\$([a-zA-Z0-9_-]+)\s*=""")
+        val assignmentRegex = Regex("""\$([-a-zA-Z0-9_]+)\s*=""")
         assignmentRegex.findAll(content).forEach {
             found.add(it.groupValues[1])
         }

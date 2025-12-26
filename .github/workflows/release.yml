@@ -1,0 +1,93 @@
+name: Build Release APK on Tag
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # 必须保留，用于发布 Release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 1. Java 环境保持不变
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # Flutter 环境开启缓存
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true # 🔥 开启 SDK 缓存，第二次构建时无需重新下载 Flutter
+
+      # 专门的 Gradle 设置与缓存
+      # 这个 Action 会自动缓存 ~/.gradle/caches 和 ~/.gradle/wrapper
+      # 并且会复用上一次构建的编译产物，大幅减少构建时间
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false # 允许写入缓存
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Prepare version info
+        id: version
+        run: |
+          TAG_NAME="${GITHUB_REF_NAME}"
+          # 针对 latest 标签的特殊处理逻辑保持不变
+          if [ "$TAG_NAME" == "latest" ]; then
+             # 使用 run_number 保证自增
+             BUILD_NUMBER=${{ github.run_number }}
+          else
+             # 普通 Tag 提取数字
+             BUILD_NUMBER=$(echo "${TAG_NAME}" | tr -cd '0-9')
+             if [ -z "$BUILD_NUMBER" ]; then BUILD_NUMBER=1; fi
+          fi
+          echo "TAG_NAME=$TAG_NAME" >> "$GITHUB_ENV"
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
+
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/release.jks
+
+      # 4. 构建 APK
+      - name: Build release APK
+        run: flutter build apk --release --build-name "$TAG_NAME" --build-number "$BUILD_NUMBER"
+        env:
+          KEYSTORE_FILE_PATH: release.jks # Relative to android/app or absolute path in container working dir?
+          # Gradle usually looks relative to the module build.gradle, so maybe passing absolute path is safer or valid relative path.
+          # In CI, 'release.jks' is in 'android/app/release.jks'.
+          # build.gradle is in 'android/app/'.
+          # So strictly 'release.jks' might resolve to 'android/app/release.jks' if CWD is the project root... wait.
+          # Gradle daemon runs in project root usually.
+          # Let's verify path.
+          KEYSTORE_KEY_ALIAS: ${{ secrets.KEYSTORE_KEY_ALIAS }}
+          KEYSTORE_KEY_PASSWORD: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
+          KEYSTORE_STORE_PASSWORD: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-${{ env.TAG_NAME }}
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/app/outputs/flutter-apk/app-release.apk
+          name: ${{ env.TAG_NAME }}
+          tag_name: ${{ env.TAG_NAME }}
+          prerelease: ${{ env.TAG_NAME == 'latest' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

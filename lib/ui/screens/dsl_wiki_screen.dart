@@ -75,7 +75,11 @@ class DslWikiScreen extends StatelessWidget {
             _SyntaxItem("LENGTH", 'Length', "LENGTH \$text"),
             _SyntaxItem("REPLACE", 'Replace', "REPLACE \$text \"old\" \"new\""),
             _SyntaxItem("SUBSTRING", 'Substring', "SUBSTRING \$text 0 5"),
-            _SyntaxItem("EXTRACT", 'Extract key-value to JSON', "EXTRACT \$str \";\" \"=\""),
+            _SyntaxItem(
+              "EXTRACT",
+              'Parse key-value pairs into a map',
+              "\$text = \"upload=123; download=456; total=789; expire=999\"\nEXTRACT \$text",
+            ),
           ]),
           _buildSection('Expression examples', [
             _SyntaxItem('Assignment', 'Assign expression result to a variable', "\$id = GET_PARAM \$url \"id\""),
@@ -122,7 +126,7 @@ class DslWikiScreen extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
+                    color: AppColors.textHeader,
                   ),
                 ),
               ),
@@ -137,51 +141,58 @@ class DslWikiScreen extends StatelessWidget {
 
   Widget _buildSyntaxRow(_SyntaxItem item) {
     return Container(
-      color: const Color(0xFFF5F9FF),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 112,
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-            color: const Color(0xFFE2EEFF),
-            child: Center(
-              child: Text(
-                item.syntax,
-                style: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textMuted,
+      color: Colors.white,
+      constraints: const BoxConstraints(minHeight: 56),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              width: 112,
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              color: const Color(0xFFE6F0FF),
+              child: Center(
+                child: Text(
+                  item.syntax,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(item.description, style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textBody,
-                  )),
-                  if (item.example.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(item.example, style: const TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 12,
-                      color: AppColors.textMuted,
-                    )),
-                  ],
-                ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(item.description, style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textHeader,
+                      )),
+                      if (item.example.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(item.example, style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 12,
+                          color: AppColors.textBody,
+                        )),
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

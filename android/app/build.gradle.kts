@@ -39,11 +39,31 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            // keyAlias, keyPassword, storeFile, and storePassword are read from environment variables
+            // This allows the CI to inject them securely.
+            // fallback to debug keys if not present (optional, but good for local release builds if desired)
+             val keystorePath = System.getenv("KEYSTORE_FILE_PATH")
+             if (keystorePath != null) {
+                 storeFile = file(keystorePath)
+                 storePassword = System.getenv("KEYSTORE_STORE_PASSWORD")
+                 keyAlias = System.getenv("KEYSTORE_KEY_ALIAS")
+                 keyPassword = System.getenv("KEYSTORE_KEY_PASSWORD")
+             } else {
+                 // Fallback or just leave empty which will fail build if signing is required but missing
+                 // For now, let's just log or do nothing. If credentials are null, it might fail.
+             }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            if (System.getenv("KEYSTORE_FILE_PATH") != null) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                signingConfig = signingConfigs.getByName("debug")
+            }
         }
     }
 }
